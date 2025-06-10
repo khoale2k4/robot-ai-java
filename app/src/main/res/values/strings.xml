@@ -1,0 +1,18 @@
+<resources>
+    <string name="app_name">My first app</string>
+    <string name="title_home">Home</string>
+    <string name="title_dashboard">Dashboard</string>
+    <string name="title_notifications">Notifications</string>
+    
+    <!-- Robot Control Strings -->
+    <string name="bluetooth_connection">Bluetooth Connection</string>
+    <string name="robot_control">Robot Control</string>
+    <string name="connect_robot">Connect to Robot</string>
+    <string name="disconnect_robot">Disconnect Robot</string>
+    <string name="robot_connected">Robot Connected</string>
+    <string name="robot_disconnected">Robot Disconnected</string>
+    <string name="scanning_devices">Scanning for devices...</string>
+    <string name="no_paired_devices">No paired devices found</string>
+    <string name="bluetooth_required">Bluetooth is required to connect to the robot</string>
+    <string name="permissions_required">Bluetooth permissions are required to connect to the robot</string>
+</resources>
