@@ -22,6 +22,7 @@ public class OverlayView extends View {
     private Paint backgroundPaint = new Paint();
     private int imageWidth = 0;
     private int imageHeight = 0;
+    private String callBackCommand = "";
     
     // Các màu khác nhau cho từng loại object - dùng màu nổi bật hơn
     private int[] colors = {
@@ -49,14 +50,27 @@ public class OverlayView extends View {
         backgroundPaint.setAlpha(200);
     }
 
-    public void setResults(List<Detection> detectionResults, int imageWidth, int imageHeight) {
+    public String setResults(List<Detection> detectionResults, int imageWidth, int imageHeight) {
         this.results = detectionResults;
         this.imageWidth = imageWidth;
         this.imageHeight = imageHeight;
-        
-        Log.d("OverlayView", "Received " + (detectionResults != null ? detectionResults.size() : 0) + " detections for drawing");
-        
-        invalidate(); // Yêu cầu vẽ lại View
+
+        // Phân tích kết quả ngay tại đây
+        String command = analyzePersonPosition(results);
+        if(command.contains("XOAY TRÁI")) {
+            callBackCommand = "TL";
+        } else if (command.contains("TIẾN")) {
+            callBackCommand = "FW";
+        } else if (command.contains("DỪNG")) {
+            callBackCommand = "ST";
+        } else {
+            callBackCommand = "TR";
+        }
+
+        Log.d("OverlayView", "Command: " + callBackCommand);
+        invalidate(); // Vẽ lại giao diện
+
+        return callBackCommand; // Trả về lệnh ngay sau khi set
     }
 
     @Override
@@ -68,6 +82,15 @@ public class OverlayView extends View {
         
         // Phân tích và hiển thị lệnh điều khiển
         String command = analyzePersonPosition(results);
+        if(command.contains("XOAY TRÁI")) {
+            callBackCommand = "TL";
+        } else if (command.contains("TIẾN")) {
+            callBackCommand = "FW";
+        } else if (command.contains("DỪNG")) {
+            callBackCommand = "ST";
+        } else {
+            callBackCommand = "TR";
+        }
         displayCommand(canvas, command);
         
         if (results == null || results.isEmpty()) {
