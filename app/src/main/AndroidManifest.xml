@@ -28,7 +28,9 @@
         <activity
             android:name=".MainActivity"
             android:exported="true"
-            android:label="@string/app_name">
+            android:label="@string/app_name"
+            android:screenOrientation="portrait"
+            android:theme="@style/Theme.My_first_app">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
@@ -40,22 +42,31 @@
         <activity
             android:name=".BluetoothConnectionActivity"
             android:exported="false"
-            android:label="@string/bluetooth_connection" />
+            android:label="@string/bluetooth_connection"
+            android:screenOrientation="portrait"
+            android:theme="@style/Theme.My_first_app" />
             
         <!-- BLE connection activity -->
         <activity
             android:name=".BLEConnectionActivity"
             android:exported="false"
-            android:label="BLE Robot Connection" />
+            android:label="BLE Robot Connection"
+            android:screenOrientation="portrait"
+            android:theme="@style/Theme.My_first_app" />
             
         <!-- Robot control activity -->
         <activity
             android:name=".RobotControlActivity"
             android:exported="false"
-            android:label="@string/robot_control" />
+            android:label="@string/robot_control"
+            android:screenOrientation="portrait"
+            android:theme="@style/Theme.My_first_app" />
         
         <activity
             android:name=".HomeActivity"
-            android:exported="false" />
+            android:exported="false"
+            android:configChanges="orientation|screenSize|keyboardHidden"
+            android:screenOrientation="sensor"
+            android:theme="@style/Theme.My_first_app" />
     </application>
 </manifest>
