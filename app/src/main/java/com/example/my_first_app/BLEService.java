@@ -164,14 +164,32 @@ public class BLEService implements RobotCommunicationInterface {
             BluetoothDevice device = result.getDevice();
             if (device == null) return;
 
-            String deviceAddress = device.getAddress();
-            Log.d(TAG, "Phát hiện thiết bị: " + deviceAddress + ", RSSI: " + result.getRssi());
+            // Check permissions before accessing device info
+            if (!hasRequiredPermissions()) {
+                Log.w(TAG, "No permissions to access device info");
+                return;
+            }
 
+            String deviceAddress = null;
             String deviceName = null;
-            if (hasRequiredPermissions()) {
+            
+            try {
+                deviceAddress = device.getAddress();
                 deviceName = device.getName();
+            } catch (SecurityException e) {
+                Log.w(TAG, "SecurityException accessing device info", e);
+                return;
+            } catch (Exception e) {
+                Log.w(TAG, "Exception accessing device info", e);
+                return;
             }
             
+            if (deviceAddress == null) {
+                Log.w(TAG, "Device address is null");
+                return;
+            }
+            
+            Log.d(TAG, "Phát hiện thiết bị: " + deviceAddress + ", RSSI: " + result.getRssi());
             Log.d(TAG, "Device name: " + (deviceName != null ? deviceName : "null"));
 
             // Show all devices, not just OhStem devices
@@ -217,16 +235,18 @@ public class BLEService implements RobotCommunicationInterface {
     };
 
     public void connectToDevice(BluetoothDevice device) {
-        stopScan();
-        
         if (device == null) {
+            Log.e(TAG, "Device is null");
             if (connectionListener != null) {
                 connectionListener.onConnectionFailed("Thiết bị không hợp lệ");
             }
             return;
         }
         
+        stopScan();
+        
         if (!hasRequiredPermissions()) {
+            Log.e(TAG, "Missing required permissions");
             if (connectionListener != null) {
                 connectionListener.onConnectionFailed("Không có quyền kết nối");
             }
@@ -236,22 +256,36 @@ public class BLEService implements RobotCommunicationInterface {
         // Disconnect existing connection if any
         if (bluetoothGatt != null) {
             try {
+                Log.d(TAG, "Closing existing GATT connection");
                 bluetoothGatt.disconnect();
                 bluetoothGatt.close();
             } catch (Exception e) {
                 Log.e(TAG, "Error closing existing GATT", e);
             }
             bluetoothGatt = null;
+            txCharacteristic = null;
+            rxCharacteristic = null;
         }
 
         try {
-            Log.d(TAG, "Đang kết nối tới " + device.getAddress());
+            String deviceAddress = device.getAddress();
+            Log.d(TAG, "Đang kết nối tới " + deviceAddress);
+            
+            // Reset connection state
+            isConnected = false;
+            
             bluetoothGatt = device.connectGatt(context, false, gattCallback);
             
             if (bluetoothGatt == null) {
+                Log.e(TAG, "Failed to create GATT connection");
                 if (connectionListener != null) {
                     connectionListener.onConnectionFailed("Không thể tạo GATT connection");
                 }
+            }
+        } catch (SecurityException e) {
+            Log.e(TAG, "SecurityException connecting to device", e);
+            if (connectionListener != null) {
+                connectionListener.onConnectionFailed("Lỗi quyền truy cập: " + e.getMessage());
             }
         } catch (Exception e) {
             Log.e(TAG, "Error connecting to device", e);
@@ -266,6 +300,11 @@ public class BLEService implements RobotCommunicationInterface {
         public void onConnectionStateChange(BluetoothGatt gatt, int status, int newState) {
             Log.d(TAG, "onConnectionStateChange: status=" + status + ", newState=" + newState);
             
+            if (gatt == null) {
+                Log.e(TAG, "GATT is null in onConnectionStateChange");
+                return;
+            }
+            
             try {
                 if (!hasRequiredPermissions()) {
                     Log.e(TAG, "No permissions in onConnectionStateChange");
@@ -276,17 +315,35 @@ public class BLEService implements RobotCommunicationInterface {
                     if (status == BluetoothGatt.GATT_SUCCESS) {
                         Log.d(TAG, "Đã kết nối tới GATT server, discovering services...");
                         isConnected = true;
-                        boolean discoverResult = gatt.discoverServices();
-                        Log.d(TAG, "discoverServices() result: " + discoverResult);
                         
-                        if (!discoverResult) {
-                            Log.e(TAG, "Failed to start service discovery");
-                            mainHandler.post(() -> {
-                                if (connectionListener != null) {
-                                    connectionListener.onConnectionFailed("Không thể khám phá dịch vụ");
+                        // Add small delay before service discovery
+                        mainHandler.postDelayed(() -> {
+                            try {
+                                if (gatt != null && isConnected) {
+                                    boolean discoverResult = gatt.discoverServices();
+                                    Log.d(TAG, "discoverServices() result: " + discoverResult);
+                                    
+                                    if (!discoverResult) {
+                                        Log.e(TAG, "Failed to start service discovery");
+                                        mainHandler.post(() -> {
+                                            if (connectionListener != null) {
+                                                connectionListener.onConnectionFailed("Không thể khám phá dịch vụ");
+                                            }
+                                        });
+                                    }
+                                } else {
+                                    Log.e(TAG, "GATT is null or not connected when trying to discover services");
                                 }
-                            });
-                        }
+                            } catch (Exception e) {
+                                Log.e(TAG, "Exception during service discovery", e);
+                                mainHandler.post(() -> {
+                                    if (connectionListener != null) {
+                                        connectionListener.onConnectionFailed("Lỗi khám phá dịch vụ: " + e.getMessage());
+                                    }
+                                });
+                            }
+                        }, 100); // 100ms delay
+                        
                     } else {
                         Log.e(TAG, "Connection failed with status: " + status);
                         isConnected = false;
@@ -313,6 +370,7 @@ public class BLEService implements RobotCommunicationInterface {
                 }
             } catch (Exception e) {
                 Log.e(TAG, "Error in onConnectionStateChange", e);
+                isConnected = false;
                 mainHandler.post(() -> {
                     if (connectionListener != null) {
                         connectionListener.onConnectionFailed("Lỗi callback: " + e.getMessage());
@@ -325,10 +383,32 @@ public class BLEService implements RobotCommunicationInterface {
         public void onServicesDiscovered(BluetoothGatt gatt, int status) {
             Log.d(TAG, "onServicesDiscovered: status=" + status);
             
+            if (gatt == null) {
+                Log.e(TAG, "GATT is null in onServicesDiscovered");
+                mainHandler.post(() -> {
+                    if (connectionListener != null) {
+                        connectionListener.onConnectionFailed("GATT connection lost");
+                    }
+                });
+                return;
+            }
+            
             try {
                 if (status == BluetoothGatt.GATT_SUCCESS) {
                     // List all available services
-                    List<BluetoothGattService> services = gatt.getServices();
+                    List<BluetoothGattService> services = null;
+                    try {
+                        services = gatt.getServices();
+                    } catch (Exception e) {
+                        Log.e(TAG, "Error getting services", e);
+                        mainHandler.post(() -> {
+                            if (connectionListener != null) {
+                                connectionListener.onConnectionFailed("Lỗi lấy danh sách dịch vụ: " + e.getMessage());
+                            }
+                        });
+                        return;
+                    }
+                    
                     if (services == null || services.isEmpty()) {
                         Log.e(TAG, "No services found");
                         mainHandler.post(() -> {
@@ -340,7 +420,9 @@ public class BLEService implements RobotCommunicationInterface {
                     }
                     
                     for (BluetoothGattService service : services) {
-                        Log.d(TAG, "Found service: " + service.getUuid().toString());
+                        if (service != null && service.getUuid() != null) {
+                            Log.d(TAG, "Found service: " + service.getUuid().toString());
+                        }
                     }
                     
                     BluetoothGattService service = gatt.getService(UART_SERVICE_UUID);
@@ -351,8 +433,10 @@ public class BLEService implements RobotCommunicationInterface {
                         List<BluetoothGattCharacteristic> characteristics = service.getCharacteristics();
                         if (characteristics != null) {
                             for (BluetoothGattCharacteristic characteristic : characteristics) {
-                                Log.d(TAG, "Found characteristic: " + characteristic.getUuid().toString() + 
-                                      ", properties: " + characteristic.getProperties());
+                                if (characteristic != null && characteristic.getUuid() != null) {
+                                    Log.d(TAG, "Found characteristic: " + characteristic.getUuid().toString() + 
+                                          ", properties: " + characteristic.getProperties());
+                                }
                             }
                         }
                         
@@ -364,13 +448,29 @@ public class BLEService implements RobotCommunicationInterface {
                         
                         if (txCharacteristic != null && rxCharacteristic != null) {
                             Log.d(TAG, "Both characteristics found, enabling notifications...");
-                            enableRxNotifications(gatt);
                             
-                            mainHandler.post(() -> {
-                                if (connectionListener != null) {
-                                    connectionListener.onDeviceConnected(gatt.getDevice());
+                            // Add delay before enabling notifications
+                            mainHandler.postDelayed(() -> {
+                                try {
+                                    if (gatt != null && rxCharacteristic != null && isConnected) {
+                                        enableRxNotifications(gatt);
+                                        
+                                        mainHandler.post(() -> {
+                                            if (connectionListener != null) {
+                                                connectionListener.onDeviceConnected(gatt.getDevice());
+                                            }
+                                        });
+                                    }
+                                } catch (Exception e) {
+                                    Log.e(TAG, "Error enabling notifications", e);
+                                    mainHandler.post(() -> {
+                                        if (connectionListener != null) {
+                                            connectionListener.onConnectionFailed("Lỗi bật thông báo: " + e.getMessage());
+                                        }
+                                    });
                                 }
-                            });
+                            }, 100);
+                            
                         } else {
                             Log.e(TAG, "Không tìm thấy characteristic UART - TX: " + (txCharacteristic != null) + 
                                   ", RX: " + (rxCharacteristic != null));
@@ -524,65 +624,111 @@ public class BLEService implements RobotCommunicationInterface {
     }
     
     private void sendDataImmediate(String data) {
-        // Kiểm tra write properties của characteristic
-        int properties = txCharacteristic.getProperties();
-        Log.d(TAG, "TX Characteristic properties: " + properties);
-        
-        // Thêm byte lệnh 0x15 vào đầu
-        byte command = 0x15;
-        byte[] messageBytes = data.getBytes(StandardCharsets.UTF_8);
-        byte[] dataToSend = new byte[1 + messageBytes.length];
-        dataToSend[0] = command;
-        System.arraycopy(messageBytes, 0, dataToSend, 1, messageBytes.length);
-
-        Log.d(TAG, "Chuẩn bị gửi " + dataToSend.length + " bytes: [0x" + 
-              String.format("%02x", command) + "] + \"" + data + "\"");
-
-        // Set giá trị cho characteristic
-        boolean setValue = txCharacteristic.setValue(dataToSend);
-        if (!setValue) {
-            Log.e(TAG, "Không thể set value cho characteristic");
+        if (bluetoothGatt == null || txCharacteristic == null || !isConnected) {
+            Log.e(TAG, "Cannot send data - bluetoothGatt: " + (bluetoothGatt != null) + 
+                  ", txCharacteristic: " + (txCharacteristic != null) + ", isConnected: " + isConnected);
             isWriting = false;
             if (communicationListener != null) {
-                communicationListener.onCommunicationError("Không thể set value cho characteristic");
+                communicationListener.onCommunicationError("Chưa kết nối với thiết bị");
             }
             return;
         }
 
-        // Thử writeCharacteristic với writeType tối ưu
-        if ((properties & BluetoothGattCharacteristic.PROPERTY_WRITE_NO_RESPONSE) != 0) {
-            txCharacteristic.setWriteType(BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE);
-            Log.d(TAG, "Sử dụng WRITE_TYPE_NO_RESPONSE");
-        } else if ((properties & BluetoothGattCharacteristic.PROPERTY_WRITE) != 0) {
-            txCharacteristic.setWriteType(BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT);
-            Log.d(TAG, "Sử dụng WRITE_TYPE_DEFAULT");
-        } else {
-            Log.e(TAG, "Characteristic không hỗ trợ write operations");
+        if (!hasRequiredPermissions()) {
+            Log.e(TAG, "Không có quyền gửi dữ liệu");
             isWriting = false;
             if (communicationListener != null) {
-                communicationListener.onCommunicationError("Characteristic không hỗ trợ write");
+                communicationListener.onCommunicationError("Không có quyền gửi dữ liệu");
             }
             return;
         }
 
-        boolean success = bluetoothGatt.writeCharacteristic(txCharacteristic);
-        
-        if (!success) {
-            Log.e(TAG, "Gửi dữ liệu không thành công - writeCharacteristic failed");
+        if (data == null) {
+            Log.e(TAG, "Data to send is null");
             isWriting = false;
             if (communicationListener != null) {
-                communicationListener.onCommunicationError("Gửi dữ liệu không thành công");
+                communicationListener.onCommunicationError("Dữ liệu gửi không hợp lệ");
+            }
+            return;
+        }
+
+        try {
+            // Kiểm tra write properties của characteristic
+            int properties = txCharacteristic.getProperties();
+            Log.d(TAG, "TX Characteristic properties: " + properties);
+            
+            // Thêm byte lệnh 0x15 vào đầu
+            byte command = 0x15;
+            byte[] messageBytes = data.getBytes(StandardCharsets.UTF_8);
+            byte[] dataToSend = new byte[1 + messageBytes.length];
+            dataToSend[0] = command;
+            System.arraycopy(messageBytes, 0, dataToSend, 1, messageBytes.length);
+
+            Log.d(TAG, "Chuẩn bị gửi " + dataToSend.length + " bytes: [0x" + 
+                  String.format("%02x", command) + "] + \"" + data + "\"");
+
+            // Set giá trị cho characteristic
+            boolean setValue = txCharacteristic.setValue(dataToSend);
+            if (!setValue) {
+                Log.e(TAG, "Không thể set value cho characteristic");
+                isWriting = false;
+                if (communicationListener != null) {
+                    communicationListener.onCommunicationError("Không thể set value cho characteristic");
+                }
+                return;
+            }
+
+            // Thử writeCharacteristic với writeType tối ưu
+            if ((properties & BluetoothGattCharacteristic.PROPERTY_WRITE_NO_RESPONSE) != 0) {
+                txCharacteristic.setWriteType(BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE);
+                Log.d(TAG, "Sử dụng WRITE_TYPE_NO_RESPONSE");
+            } else if ((properties & BluetoothGattCharacteristic.PROPERTY_WRITE) != 0) {
+                txCharacteristic.setWriteType(BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT);
+                Log.d(TAG, "Sử dụng WRITE_TYPE_DEFAULT");
+            } else {
+                Log.e(TAG, "Characteristic không hỗ trợ write operations");
+                isWriting = false;
+                if (communicationListener != null) {
+                    communicationListener.onCommunicationError("Characteristic không hỗ trợ write");
+                }
+                return;
+            }
+
+            boolean success = bluetoothGatt.writeCharacteristic(txCharacteristic);
+            
+            if (!success) {
+                Log.e(TAG, "Gửi dữ liệu không thành công - writeCharacteristic failed");
+                isWriting = false;
+                if (communicationListener != null) {
+                    communicationListener.onCommunicationError("Gửi dữ liệu không thành công");
+                }
+                // Try to process next command in queue
+                mainHandler.postDelayed(this::processCommandQueue, WRITE_DELAY_MS);
+            } else {
+                Log.d(TAG, "WriteCharacteristic initiated successfully for " + dataToSend.length + " bytes");
+                lastWriteTime = System.currentTimeMillis();
+                // Thông báo tạm thời cho UI - kết quả thực tế sẽ có trong onCharacteristicWrite
+                if (communicationListener != null) {
+                    communicationListener.onDataSent(data);
+                }
+                // isWriting will be set to false in onCharacteristicWrite callback
+            }
+        } catch (SecurityException e) {
+            Log.e(TAG, "SecurityException sending data", e);
+            isWriting = false;
+            if (communicationListener != null) {
+                communicationListener.onCommunicationError("Lỗi quyền truy cập: " + e.getMessage());
             }
             // Try to process next command in queue
             mainHandler.postDelayed(this::processCommandQueue, WRITE_DELAY_MS);
-        } else {
-            Log.d(TAG, "WriteCharacteristic initiated successfully for " + dataToSend.length + " bytes");
-            lastWriteTime = System.currentTimeMillis();
-            // Thông báo tạm thời cho UI - kết quả thực tế sẽ có trong onCharacteristicWrite
+        } catch (Exception e) {
+            Log.e(TAG, "Exception sending data", e);
+            isWriting = false;
             if (communicationListener != null) {
-                communicationListener.onDataSent(data);
+                communicationListener.onCommunicationError("Lỗi gửi dữ liệu: " + e.getMessage());
             }
-            // isWriting will be set to false in onCharacteristicWrite callback
+            // Try to process next command in queue
+            mainHandler.postDelayed(this::processCommandQueue, WRITE_DELAY_MS);
         }
     }
 

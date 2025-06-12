@@ -13,6 +13,7 @@
     <color name="primary_text">#212121</color>
     <color name="secondary_text">#757575</color>
     <color name="divider_color">#E0E0E0</color>
+    <color name="light_gray">#F0F0F0</color>
     
     <!-- Button Colors -->
     <color name="primary_blue">#2196F3</color>

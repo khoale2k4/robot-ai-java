@@ -40,9 +40,10 @@ public class HomeActivity extends AppCompatActivity {
                 selectedFragment = new RobotControlFragment();
             } else if (itemId == R.id.nav_camera_ai) {
                 selectedFragment = new CameraAIFragment();
-            } else if (itemId == R.id.nav_settings) {
-                selectedFragment = new SettingsFragment();
-            }
+            } 
+            // else if (itemId == R.id.nav_settings) {
+            //     selectedFragment = new SettingsFragment();
+            // }
             
             if (selectedFragment != null) {
                 loadFragment(selectedFragment);
@@ -64,7 +65,7 @@ public class HomeActivity extends AppCompatActivity {
         // Cleanup connection when closing app
         RobotCommunicationInterface robotCommunication = ConnectionManager.getInstance().getCommunicationService();
         if (robotCommunication != null && robotCommunication.isConnected()) {
-            robotCommunication.sendRobotCommand("STOP");
+            robotCommunication.sendRobotCommand("ST");
             robotCommunication.disconnect();
         }
         ConnectionManager.getInstance().clearConnection();
@@ -75,7 +76,7 @@ public class HomeActivity extends AppCompatActivity {
         // Stop robot before closing app
         RobotCommunicationInterface robotCommunication = ConnectionManager.getInstance().getCommunicationService();
         if (robotCommunication != null && robotCommunication.isConnected()) {
-            robotCommunication.sendRobotCommand("STOP");
+            robotCommunication.sendRobotCommand("ST");
         }
         super.onBackPressed();
     }

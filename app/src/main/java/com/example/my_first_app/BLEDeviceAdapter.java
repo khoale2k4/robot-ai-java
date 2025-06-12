@@ -1,6 +1,7 @@
 package com.example.my_first_app;
 
 import android.bluetooth.BluetoothDevice;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -54,13 +55,36 @@ public class BLEDeviceAdapter extends RecyclerView.Adapter<BLEDeviceAdapter.Devi
     public void onBindViewHolder(@NonNull DeviceViewHolder holder, int position) {
         BluetoothDevice device = devices.get(position);
         
-        String deviceName = device.getName();
-        if (deviceName == null || deviceName.isEmpty()) {
-            deviceName = "Unknown Device";
+        if (device == null) {
+            holder.deviceNameText.setText("Unknown Device");
+            holder.deviceAddressText.setText("Unknown Address");
+            holder.connectButton.setEnabled(false);
+            return;
+        }
+        
+        String deviceName = "Unknown Device";
+        String deviceAddress = "Unknown Address";
+        
+        try {
+            // Safely get device address
+            deviceAddress = device.getAddress();
+            if (deviceAddress == null || deviceAddress.isEmpty()) {
+                deviceAddress = "Unknown Address";
+            }
+            
+            // Safely get device name with permission check
+            String name = device.getName();
+            if (name != null && !name.isEmpty()) {
+                deviceName = name;
+            }
+        } catch (SecurityException e) {
+            Log.w("BLEDeviceAdapter", "SecurityException accessing device info", e);
+        } catch (Exception e) {
+            Log.w("BLEDeviceAdapter", "Exception accessing device info", e);
         }
         
         holder.deviceNameText.setText(deviceName);
-        holder.deviceAddressText.setText(device.getAddress());
+        holder.deviceAddressText.setText(deviceAddress);
         
         // Highlight OhStem devices
         if (deviceName.toLowerCase().contains("ohstem")) {

@@ -9,6 +9,7 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Toast;
+import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -63,26 +64,50 @@ public class CameraAIFragment extends Fragment {
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
-        View view = inflater.inflate(R.layout.fragment_camera_ai, container, false);
+        Log.d("CameraAIFragment", "onCreateView called");
         
-        initializeViews(view);
-        setupCommunicationService();
-        
-        if (allPermissionsGranted()) {
-            startCamera();
-        } else {
-            Toast.makeText(getContext(), "Camera permission required", Toast.LENGTH_LONG).show();
-        }
+        try {
+            View view = inflater.inflate(R.layout.fragment_camera_ai, container, false);
+            
+            initializeViews(view);
+            setupCommunicationService();
+            
+            if (allPermissionsGranted()) {
+                startCamera();
+            } else {
+                if (getContext() != null) {
+                    Toast.makeText(getContext(), "Camera permission required", Toast.LENGTH_LONG).show();
+                }
+            }
 
-        cameraExecutor = Executors.newSingleThreadExecutor();
-        setupDetector();
-        
-        return view;
+            cameraExecutor = Executors.newSingleThreadExecutor();
+            setupDetector();
+            
+            return view;
+            
+        } catch (Exception e) {
+            Log.e("CameraAIFragment", "Error in onCreateView", e);
+            // Return a simple view if layout inflation fails
+            TextView errorView = new TextView(getContext());
+            errorView.setText("Error loading camera interface");
+            return errorView;
+        }
     }
     
     private void initializeViews(View view) {
-        previewView = view.findViewById(R.id.previewView);
-        overlayView = view.findViewById(R.id.overlayView);
+        try {
+            previewView = view.findViewById(R.id.previewView);
+            overlayView = view.findViewById(R.id.overlayView);
+            
+            if (previewView == null) {
+                Log.e("CameraAIFragment", "previewView is null");
+            }
+            if (overlayView == null) {
+                Log.e("CameraAIFragment", "overlayView is null");
+            }
+        } catch (Exception e) {
+            Log.e("CameraAIFragment", "Error initializing camera views", e);
+        }
     }
     
     private boolean allPermissionsGranted() {
@@ -355,15 +380,64 @@ public class CameraAIFragment extends Fragment {
 
     @Override
     public void onDestroy() {
+        Log.d("CameraAIFragment", "onDestroy called");
         super.onDestroy();
-        if (objectDetector != null) {
-            objectDetector.close();
+        
+        try {
+            if (objectDetector != null) {
+                objectDetector.close();
+                objectDetector = null;
+            }
+        } catch (Exception e) {
+            Log.e("CameraAIFragment", "Error closing objectDetector", e);
         }
-        if (yoloDetector != null) {
-            yoloDetector.close();
+        
+        try {
+            if (yoloDetector != null) {
+                yoloDetector.close();
+                yoloDetector = null;
+            }
+        } catch (Exception e) {
+            Log.e("CameraAIFragment", "Error closing yoloDetector", e);
         }
-        if (cameraExecutor != null) {
-            cameraExecutor.shutdown();
+        
+        try {
+            if (cameraExecutor != null && !cameraExecutor.isShutdown()) {
+                cameraExecutor.shutdown();
+                cameraExecutor = null;
+            }
+        } catch (Exception e) {
+            Log.e("CameraAIFragment", "Error shutting down cameraExecutor", e);
+        }
+    }
+    
+    @Override
+    public void onPause() {
+        super.onPause();
+        Log.d("CameraAIFragment", "onPause called");
+        
+        // Stop any ongoing operations when fragment is paused
+        try {
+            if (cameraExecutor != null && !cameraExecutor.isShutdown()) {
+                cameraExecutor.shutdown();
+            }
+        } catch (Exception e) {
+            Log.e("CameraAIFragment", "Error in onPause", e);
+        }
+    }
+    
+    @Override
+    public void onResume() {
+        super.onResume();
+        Log.d("CameraAIFragment", "onResume called");
+        
+        // Restart camera executor if needed
+        try {
+            if (cameraExecutor == null || cameraExecutor.isShutdown()) {
+                cameraExecutor = Executors.newSingleThreadExecutor();
+            }
+        } catch (Exception e) {
+            Log.e("CameraAIFragment", "Error in onResume", e);
         }
     }
 } 

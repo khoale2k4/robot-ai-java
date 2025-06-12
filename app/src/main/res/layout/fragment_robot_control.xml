@@ -6,6 +6,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:padding="16dp"
+    android:background="#F5F7FA"
     tools:context=".RobotControlFragment">
 
     <!-- Connection Status -->
@@ -13,102 +14,125 @@
         android:id="@+id/connectionStatusText"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:text="Connection Status"
+        android:text="Connected"
         android:textSize="18sp"
         android:textStyle="bold"
         android:gravity="center"
         android:textColor="@color/primary_blue"
-        android:background="@drawable/rounded_background"
+        android:background="@drawable/bg_status_box"
         android:padding="12dp"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.5" />
+        app:layout_constraintEnd_toEndOf="parent" />
 
-    <!-- Control Buttons Section -->
+    <!-- Control Buttons Container -->
     <LinearLayout
         android:id="@+id/controlButtonsContainer"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:padding="12dp"
-        android:background="@drawable/rounded_background"
+        android:padding="16dp"
+        android:layout_marginTop="16dp"
+        android:background="@drawable/bg_card"
         android:gravity="center"
         app:layout_constraintTop_toBottomOf="@id/connectionStatusText"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintBottom_toTopOf="@id/disconnectButton">
+        app:layout_constraintBottom_toTopOf="@id/communicationLogContainer">
 
-        <!-- Row 1: Rotate Left / Forward / Rotate Right -->
+        <!-- Row 1 -->
         <LinearLayout
+            android:orientation="horizontal"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:orientation="horizontal"
             android:gravity="center">
 
             <Button
+                style="@style/ControlButton"
                 android:id="@+id/rotateLeftButton"
-                android:layout_width="60dp"
-                android:layout_height="60dp"
-                android:layout_margin="4dp"
-                android:backgroundTint="@color/primary_blue"
-                android:text="⟲"
-                android:textSize="18sp" />
+                android:text="⟲" />
 
             <Button
+                style="@style/ControlButtonLarge"
                 android:id="@+id/forwardButton"
-                android:layout_width="80dp"
-                android:layout_height="60dp"
-                android:layout_margin="4dp"
-                android:backgroundTint="@color/primary_blue"
-                android:text="↑"
-                android:textSize="20sp" />
+                android:text="↑" />
 
             <Button
+                style="@style/ControlButton"
                 android:id="@+id/rotateRightButton"
-                android:layout_width="60dp"
-                android:layout_height="60dp"
-                android:layout_margin="4dp"
-                android:backgroundTint="@color/primary_blue"
-                android:text="⟳"
-                android:textSize="18sp" />
+                android:text="⟳" />
         </LinearLayout>
 
-        <!-- Row 2: Left / Right -->
+        <!-- Row 2 -->
         <LinearLayout
+            android:orientation="horizontal"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="center">
+            android:gravity="center"
+            android:layout_marginTop="8dp">
 
             <Button
+                style="@style/ControlButton"
                 android:id="@+id/leftButton"
-                android:layout_width="60dp"
-                android:layout_height="60dp"
-                android:layout_margin="4dp"
-                android:backgroundTint="@color/primary_blue"
-                android:text="←"
-                android:textSize="20sp" />
+                android:text="←" />
 
             <Button
+                style="@style/ControlButton"
                 android:id="@+id/rightButton"
-                android:layout_width="60dp"
-                android:layout_height="60dp"
-                android:layout_margin="4dp"
-                android:backgroundTint="@color/primary_blue"
-                android:text="→"
-                android:textSize="20sp" />
+                android:text="→" />
         </LinearLayout>
 
-        <!-- Row 3: Backward -->
+        <!-- Row 3 -->
         <Button
+            style="@style/ControlButtonLarge"
             android:id="@+id/backwardButton"
-            android:layout_width="80dp"
-            android:layout_height="60dp"
-            android:layout_margin="4dp"
-            android:backgroundTint="@color/primary_blue"
             android:text="↓"
-            android:textSize="20sp" />
+            android:layout_marginTop="8dp" />
+    </LinearLayout>
+
+    <!-- Communication Log Container -->
+    <LinearLayout
+        android:id="@+id/communicationLogContainer"
+        android:layout_width="0dp"
+        android:layout_height="100dp"
+        android:layout_marginTop="16dp"
+        android:layout_marginBottom="16dp"
+        android:orientation="vertical"
+        android:background="@drawable/bg_card"
+        android:padding="8dp"
+        app:layout_constraintTop_toBottomOf="@id/controlButtonsContainer"
+        app:layout_constraintBottom_toTopOf="@id/disconnectButton"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Communication Log:"
+            android:textSize="14sp"
+            android:textStyle="bold"
+            android:textColor="@color/primary_text"
+            android:layout_marginBottom="4dp" />
+
+        <ScrollView
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1">
+
+            <TextView
+                android:id="@+id/communicationLogText"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text=""
+                android:textSize="12sp"
+                android:textColor="@color/secondary_text"
+                android:background="@android:color/transparent"
+                android:padding="4dp"
+                android:gravity="top|start"
+                android:scrollbars="vertical" />
+
+        </ScrollView>
+
     </LinearLayout>
 
     <!-- Disconnect Button -->
@@ -116,10 +140,11 @@
         android:id="@+id/disconnectButton"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginTop="12dp"
+        android:layout_marginBottom="12dp"
         android:backgroundTint="@android:color/holo_red_dark"
         android:text="Disconnect Robot"
         android:textColor="@android:color/white"
+        android:elevation="4dp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent" />

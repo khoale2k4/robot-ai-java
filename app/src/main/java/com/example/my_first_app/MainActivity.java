@@ -176,12 +176,35 @@ public class MainActivity extends AppCompatActivity implements BLEService.BLECon
         runOnUiThread(() -> {
             try {
                 isConnecting = false;
-                String deviceName = device.getName() != null ? device.getName() : "Robot";
-                connectionStatusText.setText("Kết nối thành công với " + deviceName);
-                Toast.makeText(this, "Kết nối thành công!", Toast.LENGTH_SHORT).show();
+                
+                if (device == null) {
+                    connectionStatusText.setText("Kết nối thành công nhưng thiết bị không xác định");
+                    Toast.makeText(this, "Kết nối thành công!", Toast.LENGTH_SHORT).show();
+                } else {
+                    String deviceName = "Robot";
+                    
+                    // Safely get device name
+                    if (bleService != null && bleService.hasRequiredPermissions()) {
+                        try {
+                            String name = device.getName();
+                            if (name != null && !name.isEmpty()) {
+                                deviceName = name;
+                            }
+                        } catch (SecurityException e) {
+                            Log.w("MainActivity", "SecurityException getting device name in onDeviceConnected", e);
+                        } catch (Exception e) {
+                            Log.w("MainActivity", "Exception getting device name in onDeviceConnected", e);
+                        }
+                    }
+                    
+                    connectionStatusText.setText("Kết nối thành công với " + deviceName);
+                    Toast.makeText(this, "Kết nối thành công!", Toast.LENGTH_SHORT).show();
+                }
                 
                 // Store BLE service in ConnectionManager
-                ConnectionManager.getInstance().setCommunicationService(bleService);
+                if (bleService != null) {
+                    ConnectionManager.getInstance().setCommunicationService(bleService);
+                }
                 
                 // Navigate to Home Activity after 1 second delay
                 connectionStatusText.postDelayed(() -> {
@@ -239,6 +262,11 @@ public class MainActivity extends AppCompatActivity implements BLEService.BLECon
     // Device click from adapter
     @Override
     public void onDeviceConnect(BluetoothDevice device) {
+        if (device == null) {
+            showError("Thiết bị không hợp lệ");
+            return;
+        }
+        
         if (isConnecting) {
             Toast.makeText(this, "Đang kết nối với thiết bị khác...", Toast.LENGTH_SHORT).show();
             return;
@@ -250,7 +278,23 @@ public class MainActivity extends AppCompatActivity implements BLEService.BLECon
         }
         
         try {
-            String deviceName = device.getName() != null ? device.getName() : "Unknown";
+            String deviceName = "Unknown";
+            String deviceAddress = device.getAddress();
+            
+            // Safely get device name with permission check
+            if (bleService.hasRequiredPermissions()) {
+                try {
+                    String name = device.getName();
+                    if (name != null && !name.isEmpty()) {
+                        deviceName = name;
+                    }
+                } catch (SecurityException e) {
+                    Log.w("MainActivity", "SecurityException getting device name", e);
+                } catch (Exception e) {
+                    Log.w("MainActivity", "Exception getting device name", e);
+                }
+            }
+            
             connectionStatusText.setText("Đang kết nối với " + deviceName + "...");
             Toast.makeText(this, "Đang kết nối với " + deviceName, Toast.LENGTH_SHORT).show();
             
