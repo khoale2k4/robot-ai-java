@@ -83,8 +83,15 @@ public class MainActivity extends AppCompatActivity {
     }
     
     private void setupRobotControlFAB() {
+        // Bluetooth Classic connection button
         binding.robotControlFab.setOnClickListener(v -> {
             Intent intent = new Intent(this, BluetoothConnectionActivity.class);
+            startActivity(intent);
+        });
+        
+        // BLE connection button
+        binding.bleConnectionFab.setOnClickListener(v -> {
+            Intent intent = new Intent(this, BLEConnectionActivity.class);
             startActivity(intent);
         });
     }

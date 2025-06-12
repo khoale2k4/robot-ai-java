@@ -16,7 +16,19 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent" />
 
-    <!-- Robot Control FAB -->
+    <!-- BLE Connection FAB -->
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
+        android:id="@+id/bleConnectionFab"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_margin="16dp"
+        android:src="@android:drawable/stat_sys_data_bluetooth"
+        android:contentDescription="BLE Robot Connection"
+        app:layout_constraintBottom_toTopOf="@id/robotControlFab"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:backgroundTint="@color/primary_blue" />
+
+    <!-- Robot Control FAB (Bluetooth Classic) -->
     <com.google.android.material.floatingactionbutton.FloatingActionButton
         android:id="@+id/robotControlFab"
         android:layout_width="wrap_content"

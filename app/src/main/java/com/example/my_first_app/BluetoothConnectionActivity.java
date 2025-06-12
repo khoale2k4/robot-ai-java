@@ -240,12 +240,16 @@ public class BluetoothConnectionActivity extends AppCompatActivity implements Bl
         progressBar.setVisibility(View.GONE);
         scanButton.setEnabled(true);
         
+        // Store Bluetooth service in ConnectionManager
+        ConnectionManager.getInstance().setCommunicationService(bluetoothService);
+        
         showAlert("Connected", "Successfully connected to " + (device.getName() != null ? device.getName() : "Unknown Device"), 
             new Runnable() {
                 @Override
                 public void run() {
                     // Go to robot control activity
                     Intent intent = new Intent(BluetoothConnectionActivity.this, RobotControlActivity.class);
+                    intent.putExtra("CONNECTION_TYPE", "CLASSIC");
                     startActivity(intent);
                 }
             });

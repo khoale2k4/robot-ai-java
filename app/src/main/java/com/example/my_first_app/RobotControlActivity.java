@@ -1,5 +1,6 @@
 package com.example.my_first_app;
 
+import android.content.Intent;
 import android.os.Bundle;
 import android.view.MotionEvent;
 import android.view.View;
@@ -9,24 +10,33 @@ import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 
-public class RobotControlActivity extends AppCompatActivity implements JoystickView.JoystickListener {
+public class RobotControlActivity extends AppCompatActivity implements JoystickView.JoystickListener, RobotCommunicationInterface.CommunicationListener {
     
-    private BluetoothService bluetoothService;
+    private RobotCommunicationInterface robotCommunication;
     private JoystickView joystickView;
     private TextView connectionStatusText;
     private TextView joystickStatusText;
+    private TextView communicationLogText;
     private Button forwardButton, backwardButton, leftButton, rightButton, stopButton;
     private Button disconnectButton;
     
     private int currentDirection = JoystickView.JoystickDirection.IDLE;
+    private String connectionType = "CLASSIC"; // Default to classic Bluetooth
     
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_robot_control);
         
+        // Get connection type from intent
+        Intent intent = getIntent();
+        connectionType = intent.getStringExtra("CONNECTION_TYPE");
+        if (connectionType == null) {
+            connectionType = "CLASSIC";
+        }
+        
         initializeViews();
-        setupBluetoothService();
+        setupCommunicationService();
         setupJoystick();
         setupControlButtons();
     }
@@ -35,6 +45,7 @@ public class RobotControlActivity extends AppCompatActivity implements JoystickV
         joystickView = findViewById(R.id.joystickView);
         connectionStatusText = findViewById(R.id.connectionStatusText);
         joystickStatusText = findViewById(R.id.joystickStatusText);
+        communicationLogText = findViewById(R.id.communicationLogText);
         
         forwardButton = findViewById(R.id.forwardButton);
         backwardButton = findViewById(R.id.backwardButton);
@@ -44,15 +55,38 @@ public class RobotControlActivity extends AppCompatActivity implements JoystickV
         disconnectButton = findViewById(R.id.disconnectButton);
     }
     
-    private void setupBluetoothService() {
-        bluetoothService = new BluetoothService(this);
+    private void setupCommunicationService() {
+        // Try to get existing service from ConnectionManager first
+        robotCommunication = ConnectionManager.getInstance().getCommunicationService();
         
-        if (bluetoothService.isConnected()) {
-            connectionStatusText.setText("Connected to: " + 
-                (bluetoothService.getConnectedDevice() != null ? 
-                 bluetoothService.getConnectedDevice().getName() : "Unknown Device"));
+        if (robotCommunication == null) {
+            // Fallback: create new service based on connection type
+            if ("BLE".equals(connectionType)) {
+                BLEService bleService = new BLEService(this);
+                robotCommunication = bleService;
+                connectionStatusText.setText("BLE Connection Mode - No active connection");
+            } else {
+                BluetoothService bluetoothService = new BluetoothService(this);
+                robotCommunication = bluetoothService;
+                connectionStatusText.setText("Bluetooth Classic Mode - No active connection");
+            }
         } else {
-            connectionStatusText.setText("Not connected");
+            // Update connection type based on service type
+            if (robotCommunication instanceof BLEService) {
+                connectionType = "BLE";
+            } else {
+                connectionType = "CLASSIC";
+            }
+        }
+        
+        robotCommunication.setCommunicationListener(this);
+        
+        if (robotCommunication.isConnected()) {
+            String deviceName = robotCommunication.getConnectedDevice() != null ? 
+                robotCommunication.getConnectedDevice().getName() : "Unknown Device";
+            connectionStatusText.setText("Connected to: " + deviceName + " (" + connectionType + ")");
+        } else {
+            connectionStatusText.setText("Not connected (" + connectionType + ")");
         }
     }
     
@@ -146,8 +180,8 @@ public class RobotControlActivity extends AppCompatActivity implements JoystickV
         
         // Disconnect button
         disconnectButton.setOnClickListener(v -> {
-            if (bluetoothService != null) {
-                bluetoothService.disconnect();
+            if (robotCommunication != null) {
+                robotCommunication.disconnect();
             }
             finish();
         });
@@ -207,8 +241,8 @@ public class RobotControlActivity extends AppCompatActivity implements JoystickV
     }
     
     private void sendRobotCommand(String command) {
-        if (bluetoothService != null && bluetoothService.isConnected()) {
-            bluetoothService.sendRobotCommand(command);
+        if (robotCommunication != null && robotCommunication.isConnected()) {
+            robotCommunication.sendRobotCommand(command);
         } else {
             Toast.makeText(this, "Robot not connected", Toast.LENGTH_SHORT).show();
         }
@@ -218,18 +252,57 @@ public class RobotControlActivity extends AppCompatActivity implements JoystickV
         joystickStatusText.setText("Control: " + state);
     }
     
+    // RobotCommunicationInterface.CommunicationListener implementation
+    @Override
+    public void onDataReceived(String data) {
+        runOnUiThread(() -> {
+            if (communicationLogText != null) {
+                communicationLogText.append("Received: " + data + "\n");
+            }
+        });
+    }
+    
+    @Override
+    public void onDataSent(String data) {
+        runOnUiThread(() -> {
+            if (communicationLogText != null) {
+                communicationLogText.append("Sent: " + data + "\n");
+            }
+        });
+    }
+    
+    @Override
+    public void onConnectionLost() {
+        runOnUiThread(() -> {
+            connectionStatusText.setText("Connection lost");
+            Toast.makeText(this, "Connection to robot lost", Toast.LENGTH_LONG).show();
+        });
+    }
+    
+    @Override
+    public void onCommunicationError(String error) {
+        runOnUiThread(() -> {
+            if (communicationLogText != null) {
+                communicationLogText.append("Error: " + error + "\n");
+            }
+            Toast.makeText(this, "Communication error: " + error, Toast.LENGTH_SHORT).show();
+        });
+    }
+    
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        if (bluetoothService != null) {
-            sendRobotCommand("STOP"); // Stop robot before disconnecting
+        if (robotCommunication != null) {
+            robotCommunication.sendRobotCommand("STOP"); // Stop robot before disconnecting
         }
+        // Clear connection from ConnectionManager
+        ConnectionManager.getInstance().clearConnection();
     }
     
     @Override
     public void onBackPressed() {
-        if (bluetoothService != null) {
-            sendRobotCommand("STOP"); // Stop robot before going back
+        if (robotCommunication != null) {
+            robotCommunication.sendRobotCommand("STOP"); // Stop robot before going back
         }
         super.onBackPressed();
     }

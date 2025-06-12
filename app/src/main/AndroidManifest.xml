@@ -42,6 +42,12 @@
             android:exported="false"
             android:label="@string/bluetooth_connection" />
             
+        <!-- BLE connection activity -->
+        <activity
+            android:name=".BLEConnectionActivity"
+            android:exported="false"
+            android:label="BLE Robot Connection" />
+            
         <!-- Robot control activity -->
         <activity
             android:name=".RobotControlActivity"

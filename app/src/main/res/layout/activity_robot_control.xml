@@ -41,7 +41,36 @@
             android:text="Joystick: Idle"
             android:textSize="14sp"
             android:textColor="@color/secondary_text"
-            android:gravity="center" />
+            android:gravity="center"
+            android:layout_marginBottom="8dp" />
+
+        <!-- Communication Log Section -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Communication Log"
+            android:textSize="14sp"
+            android:textStyle="bold"
+            android:textColor="@color/primary_text"
+            android:layout_marginBottom="4dp" />
+
+        <ScrollView
+            android:layout_width="match_parent"
+            android:layout_height="80dp"
+            android:background="@drawable/list_background"
+            android:padding="8dp">
+
+            <TextView
+                android:id="@+id/communicationLogText"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Communication log will appear here...\n"
+                android:textSize="12sp"
+                android:textColor="@color/secondary_text"
+                android:fontFamily="monospace"
+                android:scrollbars="vertical" />
+
+        </ScrollView>
 
     </LinearLayout>
 

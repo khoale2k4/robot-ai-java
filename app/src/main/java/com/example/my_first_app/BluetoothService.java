@@ -17,7 +17,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
-public class BluetoothService {
+public class BluetoothService implements RobotCommunicationInterface {
     private static final String TAG = "BluetoothService";
     private static final UUID MY_UUID = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB");
     
@@ -31,6 +31,7 @@ public class BluetoothService {
     
     private boolean isConnected = false;
     private BluetoothConnectionListener connectionListener;
+    private CommunicationListener communicationListener;
     
     public interface BluetoothConnectionListener {
         void onDeviceConnected(BluetoothDevice device);
@@ -47,6 +48,11 @@ public class BluetoothService {
     
     public void setConnectionListener(BluetoothConnectionListener listener) {
         this.connectionListener = listener;
+    }
+
+    @Override
+    public void setCommunicationListener(CommunicationListener listener) {
+        this.communicationListener = listener;
     }
     
     public boolean isBluetoothSupported() {
@@ -98,6 +104,9 @@ public class BluetoothService {
                     if (connectionListener != null) {
                         connectionListener.onConnectionFailed(e.getMessage());
                     }
+                    if (communicationListener != null) {
+                        communicationListener.onCommunicationError(e.getMessage());
+                    }
                 });
             }
         }).start();
@@ -117,12 +126,18 @@ public class BluetoothService {
                         if (connectionListener != null) {
                             connectionListener.onDataReceived(data);
                         }
+                        if (communicationListener != null) {
+                            communicationListener.onDataReceived(data);
+                        }
                     });
                 } catch (IOException e) {
                     isConnected = false;
                     mainHandler.post(() -> {
                         if (connectionListener != null) {
                             connectionListener.onDeviceDisconnected();
+                        }
+                        if (communicationListener != null) {
+                            communicationListener.onConnectionLost();
                         }
                     });
                     break;
@@ -131,47 +146,66 @@ public class BluetoothService {
         }).start();
     }
     
+    @Override
     public void sendData(String data) {
         if (isConnected && outputStream != null) {
             new Thread(() -> {
                 try {
                     outputStream.write(data.getBytes());
                     outputStream.flush();
+                    
+                    mainHandler.post(() -> {
+                        if (communicationListener != null) {
+                            communicationListener.onDataSent(data);
+                        }
+                    });
                 } catch (IOException e) {
                     mainHandler.post(() -> {
                         if (connectionListener != null) {
                             connectionListener.onConnectionFailed("Failed to send data: " + e.getMessage());
                         }
+                        if (communicationListener != null) {
+                            communicationListener.onCommunicationError("Failed to send data: " + e.getMessage());
+                        }
                     });
                 }
             }).start();
+        } else if (communicationListener != null) {
+            communicationListener.onCommunicationError("Device not connected");
         }
     }
     
+    @Override
     public void sendRobotCommand(String command) {
         sendData(command + "\n");
     }
     
+    @Override
     public void moveForward() {
         sendRobotCommand("FORWARD");
     }
     
+    @Override
     public void moveBackward() {
         sendRobotCommand("BACKWARD");
     }
     
+    @Override
     public void turnLeft() {
         sendRobotCommand("LEFT");
     }
     
+    @Override
     public void turnRight() {
         sendRobotCommand("RIGHT");
     }
     
+    @Override
     public void stopMovement() {
         sendRobotCommand("STOP");
     }
     
+    @Override
     public void disconnect() {
         isConnected = false;
         
@@ -198,10 +232,12 @@ public class BluetoothService {
         }).start();
     }
     
+    @Override
     public boolean isConnected() {
         return isConnected;
     }
     
+    @Override
     public BluetoothDevice getConnectedDevice() {
         return bluetoothDevice;
     }
