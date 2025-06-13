@@ -49,6 +49,8 @@ public class CameraAIFragment extends Fragment {
     private ObjectDetector objectDetector;
     private YOLOv10Detector yoloDetector;
     private ProcessCameraProvider cameraProvider;
+    private TextView noRobotWarning;
+    private boolean isRobotConnected = false;
     
     // Định nghĩa các model có sẵn
     private static final String MODEL_SSD_MOBILENET = "ssd_mobilenet_v1_1_metadata_1.tflite";
@@ -65,11 +67,13 @@ public class CameraAIFragment extends Fragment {
     private boolean useYOLOv10 = false;
     private boolean isDetectorInitialized = false;
     private boolean isCameraStarted = false;
+    private boolean isFragmentActive = true;
 
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
         Log.d(TAG, "onCreateView called");
+        isFragmentActive = true;
         
         try {
             View view = inflater.inflate(R.layout.fragment_camera_ai, container, false);
@@ -115,6 +119,7 @@ public class CameraAIFragment extends Fragment {
         try {
             previewView = view.findViewById(R.id.previewView);
             overlayView = view.findViewById(R.id.overlayView);
+            noRobotWarning = view.findViewById(R.id.noRobotWarning);
             
             if (previewView == null) {
                 Log.e(TAG, "previewView is null");
@@ -143,11 +148,23 @@ public class CameraAIFragment extends Fragment {
 
             if (robotCommunication != null && robotCommunication.isConnected()) {
                 Log.d(TAG, "Robot communication service is available and connected");
+                isRobotConnected = true;
+                if (noRobotWarning != null) {
+                    noRobotWarning.setVisibility(View.GONE);
+                }
             } else {
                 Log.d(TAG, "Robot communication service not available or not connected");
+                isRobotConnected = false;
+                if (noRobotWarning != null) {
+                    noRobotWarning.setVisibility(View.VISIBLE);
+                }
             }
         } catch (Exception e) {
             Log.e(TAG, "Error setting up communication service", e);
+            isRobotConnected = false;
+            if (noRobotWarning != null) {
+                noRobotWarning.setVisibility(View.VISIBLE);
+            }
         }
     }
     
@@ -209,24 +226,37 @@ public class CameraAIFragment extends Fragment {
     
     private void cleanupDetectors() {
         try {
-            if (objectDetector != null) {
-                objectDetector.close();
-                objectDetector = null;
-            }
-        } catch (Exception e) {
-            Log.e(TAG, "Error closing objectDetector", e);
-        }
-        
-        try {
+            Log.d(TAG, "Giải phóng tài nguyên AI detector");
+            
+            // Giải phóng YOLOv10 detector trước
             if (yoloDetector != null) {
-                yoloDetector.close();
-                yoloDetector = null;
+                try {
+                    yoloDetector.close();
+                    yoloDetector = null;
+                    Log.d(TAG, "YOLOv10 detector đã được giải phóng");
+                } catch (Exception e) {
+                    Log.e(TAG, "Lỗi khi giải phóng YOLOv10 detector", e);
+                }
             }
+            
+            // Giải phóng Task Vision API detector
+            if (objectDetector != null) {
+                try {
+                    objectDetector.close();
+                    objectDetector = null;
+                    Log.d(TAG, "Task Vision detector đã được giải phóng");
+                } catch (Exception e) {
+                    Log.e(TAG, "Lỗi khi giải phóng Task Vision detector", e);
+                }
+            }
+            
+            isDetectorInitialized = false;
+            
+            // Gọi System.gc() để khuyến khích garbage collector chạy
+            System.gc();
         } catch (Exception e) {
-            Log.e(TAG, "Error closing yoloDetector", e);
+            Log.e(TAG, "Lỗi khi giải phóng tài nguyên detector", e);
         }
-        
-        isDetectorInitialized = false;
     }
     
     private boolean tryInitializeYOLOv10(String modelName) {
@@ -312,54 +342,95 @@ public class CameraAIFragment extends Fragment {
     }
 
     private void startCamera() {
-        if (isCameraStarted) {
-            Log.d(TAG, "Camera already started, skipping");
-            return;
-        }
-        
-        if (getContext() == null) {
-            Log.e(TAG, "Context is null, cannot start camera");
-            return;
-        }
-        
-        Log.d(TAG, "Starting camera...");
-        
-        ListenableFuture<ProcessCameraProvider> cameraProviderFuture = ProcessCameraProvider.getInstance(requireContext());
-        cameraProviderFuture.addListener(() -> {
-            try {
-                cameraProvider = cameraProviderFuture.get();
-                bindCameraUseCases(cameraProvider);
-                isCameraStarted = true;
-                Log.d(TAG, "Camera started successfully");
-            } catch (Exception e) {
-                Log.e(TAG, "Use case binding failed", e);
-                isCameraStarted = false;
-            }
-        }, ContextCompat.getMainExecutor(requireContext()));
-    }
-
-    private void bindCameraUseCases(@NonNull ProcessCameraProvider cameraProvider) {
-        if (previewView == null) {
-            Log.e(TAG, "PreviewView is null, cannot bind camera");
+        if (!isFragmentActive || !isAdded() || getActivity() == null) {
+            Log.d(TAG, "Cannot start camera - fragment not active or attached");
             return;
         }
         
         try {
-            // Unbind all use cases before rebinding
-            cameraProvider.unbindAll();
+            // Kiểm tra quyền camera
+            if (!allPermissionsGranted()) {
+                Log.e(TAG, "Camera permissions not granted");
+                return;
+            }
             
-            Preview preview = new Preview.Builder()
-                    .setTargetAspectRatio(AspectRatio.RATIO_4_3)
-                    .build();
+            // Nếu camera đã được khởi động, không cần khởi động lại
+            if (isCameraStarted && cameraProvider != null) {
+                Log.d(TAG, "Camera already started");
+                return;
+            }
+            
+            // Lấy ProcessCameraProvider future
+            ListenableFuture<ProcessCameraProvider> cameraProviderFuture = 
+                    ProcessCameraProvider.getInstance(requireContext());
+            
+            // Thêm listener cho future
+            cameraProviderFuture.addListener(() -> {
+                try {
+                    // Kiểm tra lại fragment còn active không
+                    if (!isFragmentActive || !isAdded() || getActivity() == null) {
+                        Log.d(TAG, "Fragment no longer active, cannot start camera");
+                        return;
+                    }
+                    
+                    // Lấy ProcessCameraProvider
+                    cameraProvider = cameraProviderFuture.get();
+                    
+                    // Bind camera use cases
+                    bindCameraUseCases(cameraProvider);
+                    
+                    // Đánh dấu camera đã được khởi động
+                    isCameraStarted = true;
+                    
+                } catch (Exception e) {
+                    Log.e(TAG, "Error starting camera", e);
+                }
+            }, ContextCompat.getMainExecutor(requireContext()));
+            
+        } catch (Exception e) {
+            Log.e(TAG, "Error starting camera", e);
+        }
+    }
 
+    private void bindCameraUseCases(@NonNull ProcessCameraProvider cameraProvider) {
+        try {
+            // Chọn camera sau
             CameraSelector cameraSelector = new CameraSelector.Builder()
                     .requireLensFacing(CameraSelector.LENS_FACING_BACK)
                     .build();
 
-            preview.setSurfaceProvider(previewView.getSurfaceProvider());
+            // Preview use case
+            Preview preview = new Preview.Builder()
+                    .setTargetAspectRatio(AspectRatio.RATIO_4_3)
+                    .build();
 
-            // Use case để phân tích ảnh - only if detector is ready
+            // Gắn surface provider
+            preview.setSurfaceProvider(previewView.getSurfaceProvider());
+            
+            // Đảm bảo unbind tất cả trước khi bind lại
+            cameraProvider.unbindAll();
+            
+            // Kiểm tra xem fragment còn active không trước khi bind
+            if (!isFragmentActive || !isAdded() || isDetached() || getActivity() == null) {
+                Log.d(TAG, "Fragment no longer active, skipping camera binding");
+                return;
+            }
+
+            // Nếu detector đã được khởi tạo, thêm image analyzer
             if (isDetectorInitialized && cameraExecutor != null && !cameraExecutor.isShutdown()) {
+                // Kiểm tra lại detector
+                boolean detectorReady = (useYOLOv10 && yoloDetector != null) || (!useYOLOv10 && objectDetector != null);
+                
+                if (!detectorReady) {
+                    Log.w(TAG, "Detector không sẵn sàng, chỉ bind preview");
+                    // Kiểm tra lại fragment còn active không trước khi bind
+                    if (isFragmentActive && isAdded() && !isDetached() && getActivity() != null) {
+                        cameraProvider.bindToLifecycle(this, cameraSelector, preview);
+                        Log.d(TAG, "Camera bound with preview only (detector not ready)");
+                    }
+                    return;
+                }
+                
                 ImageAnalysis imageAnalyzer = new ImageAnalysis.Builder()
                         .setTargetAspectRatio(AspectRatio.RATIO_4_3)
                         .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
@@ -367,17 +438,13 @@ public class CameraAIFragment extends Fragment {
 
                 imageAnalyzer.setAnalyzer(cameraExecutor, image -> {
                     // Check if fragment is still active and detector is available
-                    if (!isAdded() || getActivity() == null || getActivity().isFinishing()) {
+                    if (!isFragmentActive || !isAdded() || getActivity() == null || getActivity().isFinishing()) {
                         image.close();
                         return;
                     }
                     
                     // Kiểm tra detector có sẵn không
-                    if (!useYOLOv10 && objectDetector == null) {
-                        image.close();
-                        return;
-                    }
-                    if (useYOLOv10 && yoloDetector == null) {
+                    if ((!useYOLOv10 && objectDetector == null) || (useYOLOv10 && yoloDetector == null)) {
                         image.close();
                         return;
                     }
@@ -421,11 +488,13 @@ public class CameraAIFragment extends Fragment {
                             }
 
                             // Cập nhật giao diện trên luồng UI
-                            if (getActivity() != null && !getActivity().isFinishing() && overlayView != null) {
+                            if (isFragmentActive && isAdded() && getActivity() != null && !getActivity().isFinishing() && overlayView != null) {
                                 getActivity().runOnUiThread(() -> {
                                     try {
-                                        String command = overlayView.setResults(results, image.getWidth(), image.getHeight());
-                                        sendRobotCommand(command);
+                                        if (isFragmentActive && isAdded() && overlayView != null) {
+                                            String command = overlayView.setResults(results, image.getWidth(), image.getHeight());
+                                            sendRobotCommand(command);
+                                        }
                                     } catch (Exception e) {
                                         Log.e(TAG, "Error updating overlay", e);
                                     }
@@ -435,16 +504,27 @@ public class CameraAIFragment extends Fragment {
                     } catch (Exception e) {
                         Log.e(TAG, "Lỗi phân tích ảnh", e);
                     } finally {
-                        image.close(); // Rất quan trọng: phải đóng image để nhận frame tiếp theo
+                        try {
+                            image.close(); // Rất quan trọng: phải đóng image để nhận frame tiếp theo
+                        } catch (Exception e) {
+                            Log.e(TAG, "Lỗi khi đóng image", e);
+                        }
                     }
                 });
 
-                // Gắn các use case vào lifecycle của camera
-                cameraProvider.bindToLifecycle(this, cameraSelector, preview, imageAnalyzer);
+                // Kiểm tra lại fragment còn active không trước khi bind
+                if (isFragmentActive && isAdded() && !isDetached() && getActivity() != null) {
+                    // Gắn các use case vào lifecycle của fragment
+                    cameraProvider.bindToLifecycle(this, cameraSelector, preview, imageAnalyzer);
+                    Log.d(TAG, "Camera bound with preview and analyzer");
+                }
             } else {
-                // Bind preview only if detector is not ready
-                cameraProvider.bindToLifecycle(this, cameraSelector, preview);
-                Log.d(TAG, "Camera bound with preview only (detector not ready)");
+                // Kiểm tra lại fragment còn active không trước khi bind
+                if (isFragmentActive && isAdded() && !isDetached() && getActivity() != null) {
+                    // Bind preview only if detector is not ready
+                    cameraProvider.bindToLifecycle(this, cameraSelector, preview);
+                    Log.d(TAG, "Camera bound with preview only (detector not ready)");
+                }
             }
             
         } catch (Exception e) {
@@ -453,12 +533,10 @@ public class CameraAIFragment extends Fragment {
     }
 
     private void sendRobotCommand(String command) {
-        try {
-            if (robotCommunication != null && robotCommunication.isConnected()) {
-                robotCommunication.sendRobotCommand(command);
-            }
-        } catch (Exception e) {
-            Log.e(TAG, "Error sending robot command", e);
+        if (isRobotConnected && robotCommunication != null) {
+            robotCommunication.sendRobotCommand(command);
+        } else {
+            Log.d(TAG, "Cannot send command: " + command + " - Robot not connected");
         }
     }
     private List<Detection> filterDetectionsByLabel(List<Detection> detections, String label) {
@@ -475,26 +553,21 @@ public class CameraAIFragment extends Fragment {
     }
 
     @Override
-    public void onDestroy() {
-        Log.d(TAG, "onDestroy called");
-        super.onDestroy();
-        
-        // Clean up everything
-        cleanupCamera();
-        cleanupDetectors();
-        cleanupExecutor();
-    }
-    
-    @Override
     public void onPause() {
         super.onPause();
         Log.d(TAG, "onPause called");
         
-        // Don't stop camera on pause to handle orientation changes
-        // Only stop if fragment is being destroyed
-        if (getActivity() != null && getActivity().isFinishing()) {
-            cleanupCamera();
-        }
+        // Luôn dừng camera khi fragment bị tạm dừng
+        cleanupCamera();
+    }
+    
+    @Override
+    public void onStop() {
+        super.onStop();
+        Log.d(TAG, "onStop called");
+        
+        // Đảm bảo camera được dừng khi fragment không hiển thị
+        cleanupCamera();
     }
     
     @Override
@@ -502,13 +575,16 @@ public class CameraAIFragment extends Fragment {
         super.onResume();
         Log.d(TAG, "onResume called");
         
-        // Restart camera executor if needed
+        // Đánh dấu fragment đang hoạt động
+        isFragmentActive = true;
+        
+        // Khởi động lại camera executor nếu cần
         try {
             if (cameraExecutor == null || cameraExecutor.isShutdown()) {
                 cameraExecutor = Executors.newSingleThreadExecutor();
             }
             
-            // If camera was stopped and we have permissions, restart it
+            // Nếu camera đã dừng và chúng ta có quyền, khởi động lại nó
             if (!isCameraStarted && allPermissionsGranted() && isDetectorInitialized) {
                 startCamera();
             }
@@ -520,26 +596,47 @@ public class CameraAIFragment extends Fragment {
     @Override
     public void onDestroyView() {
         Log.d(TAG, "onDestroyView called");
-        super.onDestroyView();
+        isFragmentActive = false;
         
-        // Clean up camera when view is destroyed (orientation change)
+        // Giải phóng tài nguyên camera trước khi view bị hủy
         cleanupCamera();
+        
+        // Đảm bảo không còn tham chiếu đến view
+        previewView = null;
+        overlayView = null;
+        noRobotWarning = null;
+        
+        super.onDestroyView();
+    }
+    
+    @Override
+    public void onDestroy() {
+        Log.d(TAG, "onDestroy called");
+        isFragmentActive = false;
+        
+        // Giải phóng tất cả tài nguyên
+        cleanupCamera();
+        cleanupDetectors();
+        cleanupExecutor();
+        
+        // Giúp GC giải phóng tài nguyên
+        robotCommunication = null;
+        
+        super.onDestroy();
     }
     
     @Override
     public void onDetach() {
         Log.d(TAG, "onDetach called");
-        super.onDetach();
+        isFragmentActive = false;
         
-        // Final cleanup
-        cleanupCamera();
-        cleanupDetectors();
-        cleanupExecutor();
+        super.onDetach();
     }
     
     private void cleanupCamera() {
         try {
             if (cameraProvider != null) {
+                Log.d(TAG, "Unbinding all camera use cases");
                 cameraProvider.unbindAll();
                 cameraProvider = null;
             }
@@ -552,8 +649,11 @@ public class CameraAIFragment extends Fragment {
     
     private void cleanupExecutor() {
         try {
-            if (cameraExecutor != null && !cameraExecutor.isShutdown()) {
-                cameraExecutor.shutdown();
+            if (cameraExecutor != null) {
+                if (!cameraExecutor.isShutdown()) {
+                    Log.d(TAG, "Shutting down camera executor");
+                    cameraExecutor.shutdownNow(); // Sử dụng shutdownNow thay vì shutdown để dừng ngay lập tức
+                }
                 cameraExecutor = null;
             }
         } catch (Exception e) {

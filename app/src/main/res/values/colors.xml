@@ -8,21 +8,39 @@
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
     
-    <!-- App Theme Colors -->
+    <!-- App Theme Colors - Dark Modern Design -->
     <color name="background_color">#F5F5F5</color>
-    <color name="primary_text">#212121</color>
-    <color name="secondary_text">#757575</color>
+    <color name="primary_text">#FFFFFF</color>
+    <color name="secondary_text">#7A7A7A</color>
     <color name="divider_color">#E0E0E0</color>
     <color name="light_gray">#F0F0F0</color>
+    
+    <!-- Main App Colors - Modern Dark Theme -->
+    <color name="dark_background">#0C1615</color>
+    <color name="bottom_background">#111B19</color>
+    <color name="card_background">#252525</color>
+    <color name="mint_accent">#07F8B5</color>
+    <color name="mint_border">#03DABB</color>
+    <color name="mint_transparent">#1A07F8B5</color>
+    <color name="scan_gradient_start">#0AFFDC</color>
+    <color name="scan_gradient_end">#00CAAD</color>
     
     <!-- Button Colors -->
     <color name="primary_blue">#2196F3</color>
     <color name="primary_blue_dark">#1976D2</color>
     <color name="danger_red">#F44336</color>
     <color name="danger_red_dark">#D32F2F</color>
+    <color name="cancel_orange">#FF9800</color>
+    <color name="cancel_orange_dark">#F57C00</color>
+    
+    <!-- Legacy Colors for compatibility -->
+    <color name="primary_green">#07F8B5</color>
+    <color name="primary_green_dark">#03DABB</color>
+    <color name="accent_green">#07F8B5</color>
+    <color name="mint_green">#07F8B5</color>
     
     <!-- Joystick Colors -->
     <color name="joystick_background">#E0E0E0</color>
-    <color name="joystick_button">#2196F3</color>
+    <color name="joystick_button">#07F8B5</color>
     <color name="joystick_center">#616161</color>
 </resources>

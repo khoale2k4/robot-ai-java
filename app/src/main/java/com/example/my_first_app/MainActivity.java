@@ -6,6 +6,9 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.View;
+import android.view.animation.Animation;
+import android.view.animation.AnimationUtils;
 import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -38,8 +41,12 @@ public class MainActivity extends AppCompatActivity implements BLEService.BLECon
     // RecyclerView
     private BLEDeviceAdapter deviceAdapter;
     private RecyclerView devicesRecyclerView;
-    private Button scanButton, stopScanButton;
-    private TextView connectionStatusText;
+    private Button scanButton, stopScanButton, skipConnectionButton;
+    private TextView connectionStatusText, scanStatusText, bluetoothStatusText;
+    
+    // Animation
+    private Animation pulseAnimation, spinningArcAnimation, fadeInAnimation;
+    private View scanningContainer, spinningArc;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -60,7 +67,17 @@ public class MainActivity extends AppCompatActivity implements BLEService.BLECon
         devicesRecyclerView = binding.devicesRecyclerView;
         scanButton = binding.scanButton;
         stopScanButton = binding.stopScanButton;
+        skipConnectionButton = binding.skipConnectionButton;
         connectionStatusText = binding.connectionStatusText;
+        scanStatusText = binding.scanStatusText;
+        bluetoothStatusText = binding.bluetoothStatusText;
+        scanningContainer = binding.scanningContainer;
+        spinningArc = binding.spinningArc;
+        
+        // Initialize animations
+        pulseAnimation = AnimationUtils.loadAnimation(this, R.anim.pulse_animation);
+        spinningArcAnimation = AnimationUtils.loadAnimation(this, R.anim.spinning_arc);
+        fadeInAnimation = AnimationUtils.loadAnimation(this, R.anim.fade_in);
         
         // Setup RecyclerView
         deviceAdapter = new BLEDeviceAdapter();
@@ -69,11 +86,21 @@ public class MainActivity extends AppCompatActivity implements BLEService.BLECon
         devicesRecyclerView.setAdapter(deviceAdapter);
         
         // Setup scan buttons
-        scanButton.setOnClickListener(v -> startScan());
+        scanButton.setOnClickListener(v -> {
+            if (isScanning) {
+                stopScan();
+            } else {
+                startScan();
+            }
+        });
         stopScanButton.setOnClickListener(v -> stopScan());
         
-        // Initially disable stop scan button
-        stopScanButton.setEnabled(false);
+        // Setup skip connection button
+        skipConnectionButton.setOnClickListener(v -> skipConnection());
+        
+        // Initially setup UI state
+        stopScanButton.setVisibility(View.GONE);
+        scanStatusText.setText("Quét");
     }
     
     private void initializeBLE() {
@@ -96,8 +123,10 @@ public class MainActivity extends AppCompatActivity implements BLEService.BLECon
                 return;
             }
             
-            connectionStatusText.setText("Sẵn sàng quét thiết bị BLE");
+            connectionStatusText.setText("Nhấn vào vòng tròn để bắt đầu quét");
+            bluetoothStatusText.setText("Bluetooth sẵn sàng");
             scanButton.setEnabled(true);
+            scanStatusText.setText("Quét");
             
         } catch (Exception e) {
             Log.e("MainActivity", "Lỗi khởi tạo BLE service", e);
@@ -118,10 +147,17 @@ public class MainActivity extends AppCompatActivity implements BLEService.BLECon
         try {
             deviceAdapter.clearDevices();
             connectionStatusText.setText("Đang quét thiết bị BLE...");
+            scanStatusText.setText("Đang quét...");
+            
+            // Start spinning arc animation
+            if (spinningArc != null && spinningArcAnimation != null) {
+                spinningArc.setVisibility(View.VISIBLE);
+                spinningArc.startAnimation(spinningArcAnimation);
+            }
+            
             bleService.startScan();
             isScanning = true;
-            scanButton.setEnabled(false);
-            stopScanButton.setEnabled(true);
+            stopScanButton.setVisibility(View.VISIBLE);
             
         } catch (Exception e) {
             Log.e("MainActivity", "Lỗi bắt đầu quét", e);
@@ -137,14 +173,27 @@ public class MainActivity extends AppCompatActivity implements BLEService.BLECon
         try {
             bleService.stopScan();
             connectionStatusText.setText("Đã dừng quét");
+            scanStatusText.setText("Quét");
+            
+            // Stop spinning arc animation
+            if (spinningArc != null) {
+                spinningArc.clearAnimation();
+                spinningArc.setVisibility(View.GONE);
+            }
+            
             isScanning = false;
-            scanButton.setEnabled(true);
-            stopScanButton.setEnabled(false);
+            stopScanButton.setVisibility(View.GONE);
             
         } catch (Exception e) {
             Log.e("MainActivity", "Lỗi dừng quét", e);
             showError("Lỗi dừng quét: " + e.getMessage());
         }
+    }
+    
+    private void skipConnection() {
+        Intent intent = new Intent(MainActivity.this, HomeActivity.class);
+        startActivity(intent);
+        finish(); // Kết thúc MainActivity để không quay lại
     }
     
     private void showError(String message) {
@@ -176,6 +225,7 @@ public class MainActivity extends AppCompatActivity implements BLEService.BLECon
         runOnUiThread(() -> {
             try {
                 isConnecting = false;
+                deviceAdapter.clearConnectingDevice();
                 
                 if (device == null) {
                     connectionStatusText.setText("Kết nối thành công nhưng thiết bị không xác định");
@@ -211,7 +261,7 @@ public class MainActivity extends AppCompatActivity implements BLEService.BLECon
                     try {
                         Intent intent = new Intent(MainActivity.this, HomeActivity.class);
                         startActivity(intent);
-                        finish(); // Close MainActivity
+                        finish(); // Kết thúc MainActivity để không quay lại
                     } catch (Exception e) {
                         Log.e("MainActivity", "Lỗi chuyển trang", e);
                         showError("Lỗi chuyển trang: " + e.getMessage());
@@ -229,6 +279,7 @@ public class MainActivity extends AppCompatActivity implements BLEService.BLECon
     public void onDeviceDisconnected() {
         runOnUiThread(() -> {
             isConnecting = false;
+            deviceAdapter.clearConnectingDevice();
             connectionStatusText.setText("Robot đã ngắt kết nối");
             Toast.makeText(this, "Robot đã ngắt kết nối", Toast.LENGTH_SHORT).show();
         });
@@ -238,6 +289,7 @@ public class MainActivity extends AppCompatActivity implements BLEService.BLECon
     public void onConnectionFailed(String error) {
         runOnUiThread(() -> {
             isConnecting = false;
+            deviceAdapter.clearConnectingDevice();
             showError("Kết nối thất bại: " + error);
         });
     }
@@ -246,6 +298,9 @@ public class MainActivity extends AppCompatActivity implements BLEService.BLECon
     public void onScanStarted() {
         runOnUiThread(() -> {
             connectionStatusText.setText("Đang quét thiết bị BLE...");
+            scanStatusText.setText("Đang quét...");
+            isScanning = true;
+            stopScanButton.setVisibility(View.VISIBLE);
         });
     }
     
@@ -253,9 +308,20 @@ public class MainActivity extends AppCompatActivity implements BLEService.BLECon
     public void onScanStopped() {
         runOnUiThread(() -> {
             isScanning = false;
-            scanButton.setEnabled(true);
-            stopScanButton.setEnabled(false);
-            connectionStatusText.setText("Đã dừng quét");
+            scanStatusText.setText("Quét");
+            stopScanButton.setVisibility(View.GONE);
+            
+            // Stop spinning arc animation when scan stops
+            if (spinningArc != null) {
+                spinningArc.clearAnimation();
+                spinningArc.setVisibility(View.GONE);
+            }
+            
+            if (deviceAdapter.getItemCount() == 0) {
+                connectionStatusText.setText("Không tìm thấy thiết bị nào");
+            } else {
+                connectionStatusText.setText("Tìm thấy " + deviceAdapter.getItemCount() + " thiết bị");
+            }
         });
     }
     
@@ -299,12 +365,36 @@ public class MainActivity extends AppCompatActivity implements BLEService.BLECon
             Toast.makeText(this, "Đang kết nối với " + deviceName, Toast.LENGTH_SHORT).show();
             
             isConnecting = true;
+            deviceAdapter.setConnectingDevice(device);
             bleService.connectToDevice(device);
             
         } catch (Exception e) {
             Log.e("MainActivity", "Lỗi kết nối thiết bị", e);
             showError("Lỗi kết nối: " + e.getMessage());
             isConnecting = false;
+            deviceAdapter.clearConnectingDevice();
+        }
+    }
+
+    @Override
+    public void onCancelConnection(BluetoothDevice device) {
+        if (device == null) {
+            return;
+        }
+        
+        try {
+            if (bleService != null && isConnecting) {
+                bleService.disconnect();
+                connectionStatusText.setText("Đã hủy kết nối");
+                Toast.makeText(this, "Đã hủy kết nối", Toast.LENGTH_SHORT).show();
+            }
+            
+            isConnecting = false;
+            deviceAdapter.clearConnectingDevice();
+            
+        } catch (Exception e) {
+            Log.e("MainActivity", "Lỗi hủy kết nối", e);
+            showError("Lỗi hủy kết nối: " + e.getMessage());
         }
     }
 
