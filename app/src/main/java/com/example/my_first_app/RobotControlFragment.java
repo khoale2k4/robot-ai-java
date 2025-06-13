@@ -1,5 +1,6 @@
 package com.example.my_first_app;
 
+import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.util.Log;
@@ -15,6 +16,8 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.core.app.ActivityCompat;
 import androidx.fragment.app.Fragment;
+import androidx.fragment.app.FragmentManager;
+import com.google.android.material.bottomnavigation.BottomNavigationView;
 
 public class RobotControlFragment extends Fragment implements RobotCommunicationInterface.CommunicationListener {
     
@@ -26,7 +29,8 @@ public class RobotControlFragment extends Fragment implements RobotCommunication
 //    private TextView joystickStatusText;
     private TextView communicationLogText;
     private Button forwardButton, backwardButton, leftButton, rightButton, turnLeftButton, turnRightButton;
-    private Button disconnectButton;
+    private Button disconnectButton, connectButton;
+    private View noConnectionView, controlsView;
     
     private int currentDirection = JoystickView.JoystickDirection.IDLE;
     
@@ -69,6 +73,17 @@ public class RobotControlFragment extends Fragment implements RobotCommunication
             backwardButton = view.findViewById(R.id.backwardButton);
             disconnectButton = view.findViewById(R.id.disconnectButton);
             
+            // New views for no connection state
+            noConnectionView = view.findViewById(R.id.noConnectionView);
+            controlsView = view.findViewById(R.id.controlsView);
+            connectButton = view.findViewById(R.id.connectButton);
+            
+            // Update the no connection description text
+            TextView noConnectionDescription = view.findViewById(R.id.noConnectionDescription);
+            if (noConnectionDescription != null) {
+                noConnectionDescription.setText("Bạn cần kết nối với robot để sử dụng các tính năng điều khiển. Nhấn nút bên dưới để quay về màn hình quét thiết bị.");
+            }
+            
             // Check for null views
             if (connectionStatusText == null) {
                 Log.e(TAG, "connectionStatusText is null");
@@ -106,21 +121,61 @@ public class RobotControlFragment extends Fragment implements RobotCommunication
                     if (connectionStatusText != null) {
                         connectionStatusText.setText("Connected to: " + deviceName + " (BLE)");
                     }
+                    
+                    // Show controls, hide no connection view
+                    showControlsView(true);
                 } else {
                     if (connectionStatusText != null) {
                         connectionStatusText.setText("Not connected");
                     }
+                    
+                    // Show no connection view, hide controls
+                    showControlsView(false);
                 }
             } else {
                 if (connectionStatusText != null) {
                     connectionStatusText.setText("No robot service available");
                 }
+                
+                // Show no connection view, hide controls
+                showControlsView(false);
             }
+            
+            // Setup connect button
+            if (connectButton != null) {
+                connectButton.setOnClickListener(v -> {
+                    // Navigate back to the main screen (MainActivity)
+                    if (getActivity() != null) {
+                        try {
+                            // Quay về màn hình chính (MainActivity) với các mục Ohstem Robot Control, Sẵn sàng quét thiết bị BLE
+                            Intent intent = new Intent(getActivity(), MainActivity.class);
+                            startActivity(intent);
+                            
+                            // Đóng HomeActivity để không quay lại màn hình hiện tại khi nhấn back
+                            getActivity().finish();
+                        } catch (Exception e) {
+                            Log.e(TAG, "Error navigating back to MainActivity", e);
+                            Toast.makeText(getContext(), "Không thể quay về màn hình chính", Toast.LENGTH_SHORT).show();
+                        }
+                    }
+                });
+            }
+            
         } catch (Exception e) {
             Log.e(TAG, "Error setting up communication service", e);
             if (connectionStatusText != null) {
                 connectionStatusText.setText("Error setting up communication");
             }
+            
+            // Show no connection view, hide controls
+            showControlsView(false);
+        }
+    }
+    
+    private void showControlsView(boolean showControls) {
+        if (controlsView != null && noConnectionView != null) {
+            controlsView.setVisibility(showControls ? View.VISIBLE : View.GONE);
+            noConnectionView.setVisibility(showControls ? View.GONE : View.VISIBLE);
         }
     }
     
@@ -251,11 +306,17 @@ public class RobotControlFragment extends Fragment implements RobotCommunication
                     try {
                         if (robotCommunication != null) {
                             robotCommunication.disconnect();
+                            Toast.makeText(getContext(), "Đã ngắt kết nối với robot", Toast.LENGTH_SHORT).show();
                         }
-                        // Close the app
-                        if (getActivity() != null) {
-                            getActivity().finish();
+                        
+                        // Update UI to show disconnected state
+                        if (connectionStatusText != null) {
+                            connectionStatusText.setText("Đã ngắt kết nối");
                         }
+                        
+                        // Show no connection view
+                        showControlsView(false);
+                        
                     } catch (Exception e) {
                         Log.e(TAG, "Error disconnecting", e);
                     }

@@ -20,6 +20,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class YOLOv10Detector {
     private static final String TAG = "YOLOv10Detector";
@@ -46,6 +47,8 @@ public class YOLOv10Detector {
     
     private Interpreter interpreter;
     private ImageProcessor imageProcessor;
+    private AtomicBoolean isReleased = new AtomicBoolean(false);
+    private String modelName;
     
     // Detection result class
     public static class Detection {
@@ -63,39 +66,59 @@ public class YOLOv10Detector {
     }
     
     public YOLOv10Detector(Context context, String modelPath) throws IOException {
-        // Load model
-        MappedByteBuffer modelBuffer = loadModelFile(context, modelPath);
+        this.modelName = modelPath;
         
-        // Create interpreter with options
-        Interpreter.Options options = new Interpreter.Options();
-        options.setNumThreads(4);
-        // Try GPU acceleration
         try {
-            options.setUseNNAPI(true);
-            Log.i(TAG, "Sử dụng NNAPI acceleration");
-        } catch (Exception e) {
-            Log.i(TAG, "NNAPI không khả dụng, sử dụng CPU");
-        }
-        
-        interpreter = new Interpreter(modelBuffer, options);
-        
-        // Create image processor
-        imageProcessor = new ImageProcessor.Builder()
-            .add(new ResizeOp(INPUT_SIZE, INPUT_SIZE, ResizeOp.ResizeMethod.BILINEAR))
-            .build();
+            // Load model
+            MappedByteBuffer modelBuffer = loadModelFile(context, modelPath);
             
-        Log.i(TAG, "YOLOv10Detector khởi tạo thành công");
+            // Create interpreter with options
+            Interpreter.Options options = new Interpreter.Options();
+            options.setNumThreads(4);
+            // Try GPU acceleration
+            try {
+                options.setUseNNAPI(true);
+                Log.i(TAG, "Sử dụng NNAPI acceleration");
+            } catch (Exception e) {
+                Log.i(TAG, "NNAPI không khả dụng, sử dụng CPU");
+            }
+            
+            interpreter = new Interpreter(modelBuffer, options);
+            
+            // Create image processor
+            imageProcessor = new ImageProcessor.Builder()
+                .add(new ResizeOp(INPUT_SIZE, INPUT_SIZE, ResizeOp.ResizeMethod.BILINEAR))
+                .build();
+                
+            Log.i(TAG, "YOLOv10Detector khởi tạo thành công");
+            Log.i(TAG, "Đã khởi tạo YOLOv10 model: " + modelPath);
+        } catch (Exception e) {
+            Log.e(TAG, "Lỗi khởi tạo YOLOv10Detector", e);
+            close();
+            throw e;
+        }
     }
     
     private MappedByteBuffer loadModelFile(Context context, String modelPath) throws IOException {
-        FileInputStream inputStream = new FileInputStream(context.getAssets().openFd(modelPath).getFileDescriptor());
-        FileChannel fileChannel = inputStream.getChannel();
-        long startOffset = context.getAssets().openFd(modelPath).getStartOffset();
-        long declaredLength = context.getAssets().openFd(modelPath).getDeclaredLength();
-        return fileChannel.map(FileChannel.MapMode.READ_ONLY, startOffset, declaredLength);
+        try {
+            FileInputStream inputStream = new FileInputStream(context.getAssets().openFd(modelPath).getFileDescriptor());
+            FileChannel fileChannel = inputStream.getChannel();
+            long startOffset = context.getAssets().openFd(modelPath).getStartOffset();
+            long declaredLength = context.getAssets().openFd(modelPath).getDeclaredLength();
+            return fileChannel.map(FileChannel.MapMode.READ_ONLY, startOffset, declaredLength);
+        } catch (IOException e) {
+            Log.e(TAG, "Lỗi khi đọc file model: " + modelPath, e);
+            throw e;
+        }
     }
     
-    public List<Detection> detect(Bitmap bitmap, int imageRotation) {
+    public synchronized List<Detection> detect(Bitmap bitmap, int imageRotation) {
+        // Kiểm tra xem detector đã bị giải phóng chưa
+        if (isReleased.get() || interpreter == null) {
+            Log.w(TAG, "Không thể detect: Detector đã bị giải phóng hoặc chưa được khởi tạo");
+            return new ArrayList<>();
+        }
+        
         try {
             // Preprocess image
             TensorImage tensorImage = TensorImage.fromBitmap(bitmap);
@@ -130,6 +153,12 @@ public class YOLOv10Detector {
             // YOLOv10 output format: [1, num_detections, 6] where 6 = 4 (bbox) + 1 (confidence) + 1 (class)
             // This model appears to have post-processed outputs (NMS already applied)
             float[][][] output = new float[1][300][6]; // Actual output dimensions from model
+            
+            // Kiểm tra lại trước khi chạy inference
+            if (isReleased.get() || interpreter == null) {
+                Log.w(TAG, "Không thể chạy inference: Detector đã bị giải phóng");
+                return new ArrayList<>();
+            }
             
             // Run inference
             interpreter.run(inputBuffer, output);
@@ -252,9 +281,32 @@ public class YOLOv10Detector {
         return intersectionArea / unionArea;
     }
     
-    public void close() {
-        if (interpreter != null) {
-            interpreter.close();
+    public synchronized void close() {
+        if (isReleased.getAndSet(true)) {
+            return; // Đã được giải phóng rồi
+        }
+        
+        Log.d(TAG, "Đang giải phóng tài nguyên YOLOv10Detector: " + modelName);
+        try {
+            if (interpreter != null) {
+                interpreter.close();
+                interpreter = null;
+            }
+            
+            imageProcessor = null;
+            
+            Log.d(TAG, "Đã giải phóng tài nguyên YOLOv10Detector: " + modelName);
+        } catch (Exception e) {
+            Log.e(TAG, "Lỗi khi giải phóng tài nguyên YOLOv10Detector", e);
+        }
+    }
+    
+    @Override
+    protected void finalize() throws Throwable {
+        try {
+            close();
+        } finally {
+            super.finalize();
         }
     }
 } 
