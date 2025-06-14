@@ -24,6 +24,9 @@ public class OverlayView extends View {
     private int imageWidth = 0;
     private int imageHeight = 0;
     private String callBackCommand = "";
+    private String lastCommand = "";
+    private long lastCommandTime = 0;
+    private static final long COMMAND_INTERVAL_MS = 1000;
     private Controller controller;
 
     // Các màu khác nhau cho từng loại object - dùng màu nổi bật hơn
@@ -58,22 +61,34 @@ public class OverlayView extends View {
         this.imageWidth = imageWidth;
         this.imageHeight = imageHeight;
 
-        // Phân tích kết quả ngay tại đây
-        String command = analyzePersonPosition(results);
-        if (command.contains("XOAY TRÁI")) {
-            callBackCommand = "TL";
-        } else if (command.contains("TIẾN")) {
-            callBackCommand = "FW";
-        } else if (command.contains("DỪNG")) {
-            callBackCommand = "ST";
+        // Phân tích kết quả
+        String analyzed = analyzePersonPosition(results);
+
+        String newCommand;
+        if (analyzed.contains("XOAY TRÁI")) {
+            newCommand = "TL";
+        } else if (analyzed.contains("TIẾN")) {
+            newCommand = "FW";
+        } else if (analyzed.contains("DỪNG")) {
+            newCommand = "ST";
+        } else if (analyzed.contains("XOAY PHẢI")) {
+            newCommand = "TR";
         } else {
-            callBackCommand = "SR";
+            newCommand = "SR";
         }
 
-        Log.d("OverlayView", "Command: " + callBackCommand);
-        invalidate(); // Vẽ lại giao diện
+        long currentTime = System.currentTimeMillis();
+        if (!newCommand.equals(lastCommand) || currentTime - lastCommandTime >= COMMAND_INTERVAL_MS) {
+            callBackCommand = newCommand;
+            lastCommand = newCommand;
+            lastCommandTime = currentTime;
+            Log.d("OverlayView", "New command issued: " + newCommand);
+        } else {
+            Log.d("OverlayView", "Same command within interval, skip sending: " + newCommand);
+        }
 
-        return callBackCommand; // Trả về lệnh ngay sau khi set
+        invalidate(); // vẽ lại giao diện
+        return callBackCommand;
     }
 
     @Override
@@ -255,7 +270,10 @@ public class OverlayView extends View {
 
         String distance = estimateDistance(bboxPerson[2], bboxPerson[3]);
 
-        return movement + " - " + turn + " | " + distance;
+        // ⚠️ Bổ sung tốc độ vào thông báo
+        String speedInfo = String.format(" | Tốc độ: %.2f | Góc: %.2f", linear, angular);
+
+        return movement + " - " + turn + " | " + distance + speedInfo;
     }
 
     private String estimateDistance(float personWidth, float personHeight) {
