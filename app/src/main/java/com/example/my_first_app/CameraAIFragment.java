@@ -19,7 +19,6 @@ import androidx.camera.core.ImageAnalysis;
 import androidx.camera.core.Preview;
 import androidx.camera.lifecycle.ProcessCameraProvider;
 import androidx.camera.view.PreviewView;
-import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 
@@ -38,10 +37,12 @@ import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import com.google.android.material.floatingactionbutton.FloatingActionButton;
+
 public class CameraAIFragment extends Fragment {
-    
+
     private static final String TAG = "CameraAIFragment";
-    
+
     private RobotCommunicationInterface robotCommunication;
     private PreviewView previewView;
     private OverlayView overlayView;
@@ -49,41 +50,45 @@ public class CameraAIFragment extends Fragment {
     private ObjectDetector objectDetector;
     private YOLOv10Detector yoloDetector;
     private ProcessCameraProvider cameraProvider;
-    
+
     // Định nghĩa các model có sẵn
     private static final String MODEL_SSD_MOBILENET = "ssd_mobilenet_v1_1_metadata_1.tflite";
     private static final String MODEL_MOBILENET_V1 = "mobilenet_v1_1.0_224.tflite";
-    private static final String MODEL_YOLOV10N = "yolov10n_float16.tflite";
-    
+    private static final String MODEL_YOLOV10N = "yolov10n_float16_old.tflite";
+
     // Model hiện tại đang sử dụng
     private String currentModelName = MODEL_YOLOV10N;
-    
+
     // Label cần phát hiện
     private static final String TARGET_LABEL = "person";
-    
+
     // Detection mode
     private boolean useYOLOv10 = false;
     private boolean isDetectorInitialized = false;
     private boolean isCameraStarted = false;
+    private boolean isScanning = false;
+    private FloatingActionButton scanButton;
 
     @Nullable
     @Override
-    public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
+    public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container,
+            @Nullable Bundle savedInstanceState) {
         Log.d(TAG, "onCreateView called");
-        
+
         try {
             View view = inflater.inflate(R.layout.fragment_camera_ai, container, false);
-            
+
             initializeViews(view);
             setupCommunicationService();
-            
+            setupScanButton(view);
+
             // Initialize camera executor early
             if (cameraExecutor == null || cameraExecutor.isShutdown()) {
                 cameraExecutor = Executors.newSingleThreadExecutor();
             }
-            
+
             return view;
-            
+
         } catch (Exception e) {
             Log.e(TAG, "Error in onCreateView", e);
             // Return a simple view if layout inflation fails
@@ -92,15 +97,15 @@ public class CameraAIFragment extends Fragment {
             return errorView;
         }
     }
-    
+
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
         Log.d(TAG, "onViewCreated called");
-        
+
         // Setup detector after view is created
         setupDetector();
-        
+
         // Start camera if permissions are granted
         if (allPermissionsGranted()) {
             startCamera();
@@ -110,12 +115,12 @@ public class CameraAIFragment extends Fragment {
             }
         }
     }
-    
+
     private void initializeViews(View view) {
         try {
             previewView = view.findViewById(R.id.previewView);
             overlayView = view.findViewById(R.id.overlayView);
-            
+
             if (previewView == null) {
                 Log.e(TAG, "previewView is null");
             }
@@ -126,10 +131,11 @@ public class CameraAIFragment extends Fragment {
             Log.e(TAG, "Error initializing camera views", e);
         }
     }
-    
+
     private boolean allPermissionsGranted() {
         try {
-            return ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED;
+            return ContextCompat.checkSelfPermission(requireContext(),
+                    Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED;
         } catch (Exception e) {
             Log.e(TAG, "Error checking camera permissions", e);
             return false;
@@ -150,19 +156,19 @@ public class CameraAIFragment extends Fragment {
             Log.e(TAG, "Error setting up communication service", e);
         }
     }
-    
+
     private void setupDetector() {
         if (isDetectorInitialized) {
             Log.d(TAG, "Detector already initialized, skipping setup");
             return;
         }
-        
+
         try {
             Log.d(TAG, "Setting up AI detector...");
-            
+
             // Giải phóng detector cũ nếu có
             cleanupDetectors();
-            
+
             // Thử khởi tạo YOLOv10 trước nếu là YOLOv10 model
             if (currentModelName.equals(MODEL_YOLOV10N)) {
                 boolean yoloSuccess = tryInitializeYOLOv10(currentModelName);
@@ -173,22 +179,23 @@ public class CameraAIFragment extends Fragment {
                     return;
                 }
             }
-            
+
             // Nếu không phải YOLOv10 hoặc YOLOv10 fail, thử Task Vision API
             useYOLOv10 = false;
             boolean success = tryInitializeTaskVision(currentModelName);
-            
+
             // Nếu model hiện tại fail, thử fallback về SSD MobileNet
             if (!success && !currentModelName.equals(MODEL_SSD_MOBILENET)) {
                 Log.w(TAG, "Model " + currentModelName + " không tương thích, chuyển về SSD MobileNet");
                 currentModelName = MODEL_SSD_MOBILENET;
                 success = tryInitializeTaskVision(currentModelName);
-                
+
                 if (success && getContext() != null) {
-                    Toast.makeText(getContext(), "Model không tương thích, đã chuyển về SSD MobileNet", Toast.LENGTH_LONG).show();
+                    Toast.makeText(getContext(), "Model không tương thích, đã chuyển về SSD MobileNet",
+                            Toast.LENGTH_LONG).show();
                 }
             }
-            
+
             if (success) {
                 isDetectorInitialized = true;
                 Log.i(TAG, "Task Vision detector initialized successfully");
@@ -198,7 +205,7 @@ public class CameraAIFragment extends Fragment {
                     Toast.makeText(getContext(), "Không thể khởi tạo bất kỳ AI model nào", Toast.LENGTH_LONG).show();
                 }
             }
-            
+
         } catch (Exception e) {
             Log.e(TAG, "Lỗi không xác định khi khởi tạo detector", e);
             if (getContext() != null) {
@@ -206,7 +213,7 @@ public class CameraAIFragment extends Fragment {
             }
         }
     }
-    
+
     private void cleanupDetectors() {
         try {
             if (objectDetector != null) {
@@ -216,7 +223,7 @@ public class CameraAIFragment extends Fragment {
         } catch (Exception e) {
             Log.e(TAG, "Error closing objectDetector", e);
         }
-        
+
         try {
             if (yoloDetector != null) {
                 yoloDetector.close();
@@ -225,10 +232,10 @@ public class CameraAIFragment extends Fragment {
         } catch (Exception e) {
             Log.e(TAG, "Error closing yoloDetector", e);
         }
-        
+
         isDetectorInitialized = false;
     }
-    
+
     private boolean tryInitializeYOLOv10(String modelName) {
         try {
             yoloDetector = new YOLOv10Detector(requireContext(), modelName);
@@ -239,45 +246,46 @@ public class CameraAIFragment extends Fragment {
             return false;
         }
     }
-    
+
     private boolean tryInitializeTaskVision(String modelName) {
         try {
             // Tùy chọn cho Object Detector, bắt đầu với CPU
             BaseOptions.Builder baseOptionsBuilder = BaseOptions.builder()
-                .setNumThreads(4); // Sử dụng 4 thread để tăng hiệu suất
-                
+                    .setNumThreads(4); // Sử dụng 4 thread để tăng hiệu suất
+
             // Thử sử dụng GPU nếu có sẵn
             boolean useGpu = false;
             try {
                 // Tạo detector với GPU trước để test
                 BaseOptions gpuOptions = BaseOptions.builder()
-                    .setNumThreads(4)
-                    .useGpu()
-                    .build();
-                    
+                        .setNumThreads(4)
+                        .useGpu()
+                        .build();
+
                 ObjectDetector.ObjectDetectorOptions gpuTestOptions = ObjectDetector.ObjectDetectorOptions.builder()
-                    .setBaseOptions(gpuOptions)
-                    .setMaxResults(1) // Test với ít kết quả
-                    .setScoreThreshold(0.8f)
-                    .build();
-                    
-                ObjectDetector testDetector = ObjectDetector.createFromFileAndOptions(requireContext(), modelName, gpuTestOptions);
+                        .setBaseOptions(gpuOptions)
+                        .setMaxResults(1) // Test với ít kết quả
+                        .setScoreThreshold(0.8f)
+                        .build();
+
+                ObjectDetector testDetector = ObjectDetector.createFromFileAndOptions(requireContext(), modelName,
+                        gpuTestOptions);
                 testDetector.close(); // Đóng detector test
-                
+
                 // Nếu không crash thì GPU khả dụng
                 baseOptionsBuilder.useGpu();
                 useGpu = true;
                 Log.i("ObjectDetector", "Sử dụng GPU acceleration");
-                
+
             } catch (Exception e) {
                 Log.i("ObjectDetector", "GPU không khả dụng, sử dụng CPU: " + e.getMessage());
                 // Giữ nguyên CPU-only configuration
             }
-            
+
             // Tùy chỉnh cài đặt theo từng model
             int maxResults;
             float scoreThreshold;
-            
+
             if (modelName.equals(MODEL_YOLOV10N)) {
                 // Cài đặt tối ưu cho YOLOv10n
                 maxResults = 10;
@@ -291,17 +299,17 @@ public class CameraAIFragment extends Fragment {
                 maxResults = 5;
                 scoreThreshold = 0.5f;
             }
-            
+
             ObjectDetector.ObjectDetectorOptions options = ObjectDetector.ObjectDetectorOptions.builder()
-                .setBaseOptions(baseOptionsBuilder.build())
-                .setMaxResults(maxResults)
-                .setScoreThreshold(scoreThreshold)
-                .build();
-                
+                    .setBaseOptions(baseOptionsBuilder.build())
+                    .setMaxResults(maxResults)
+                    .setScoreThreshold(scoreThreshold)
+                    .build();
+
             objectDetector = ObjectDetector.createFromFileAndOptions(requireContext(), modelName, options);
             Log.i("ObjectDetector", "Đã khởi tạo model: " + modelName + " với " + (useGpu ? "GPU" : "CPU"));
             return true;
-            
+
         } catch (IOException e) {
             Log.e("ObjectDetector", "Lỗi khởi tạo object detector với model: " + modelName, e);
             return false;
@@ -316,15 +324,16 @@ public class CameraAIFragment extends Fragment {
             Log.d(TAG, "Camera already started, skipping");
             return;
         }
-        
+
         if (getContext() == null) {
             Log.e(TAG, "Context is null, cannot start camera");
             return;
         }
-        
+
         Log.d(TAG, "Starting camera...");
-        
-        ListenableFuture<ProcessCameraProvider> cameraProviderFuture = ProcessCameraProvider.getInstance(requireContext());
+
+        ListenableFuture<ProcessCameraProvider> cameraProviderFuture = ProcessCameraProvider
+                .getInstance(requireContext());
         cameraProviderFuture.addListener(() -> {
             try {
                 cameraProvider = cameraProviderFuture.get();
@@ -343,11 +352,11 @@ public class CameraAIFragment extends Fragment {
             Log.e(TAG, "PreviewView is null, cannot bind camera");
             return;
         }
-        
+
         try {
             // Unbind all use cases before rebinding
             cameraProvider.unbindAll();
-            
+
             Preview preview = new Preview.Builder()
                     .setTargetAspectRatio(AspectRatio.RATIO_4_3)
                     .build();
@@ -371,7 +380,7 @@ public class CameraAIFragment extends Fragment {
                         image.close();
                         return;
                     }
-                    
+
                     // Kiểm tra detector có sẵn không
                     if (!useYOLOv10 && objectDetector == null) {
                         image.close();
@@ -381,41 +390,44 @@ public class CameraAIFragment extends Fragment {
                         image.close();
                         return;
                     }
-                    
+
                     try {
                         // Chuyển ImageProxy sang Bitmap
                         Bitmap bitmap = image.toBitmap();
 
                         if (bitmap != null) {
                             final List<Detection> results;
-                            
+
                             if (useYOLOv10) {
                                 // Sử dụng YOLOv10Detector
-                                List<YOLOv10Detector.Detection> yoloResults = yoloDetector.detect(bitmap, image.getImageInfo().getRotationDegrees());
-                                
+                                List<YOLOv10Detector.Detection> yoloResults = yoloDetector.detect(bitmap,
+                                        image.getImageInfo().getRotationDegrees());
+
                                 // Lọc chỉ lấy những detection có label mong muốn
-                                List<YOLOv10Detector.Detection> filteredYoloResults = DetectionAdapter.filterYOLOv10DetectionsByLabel(yoloResults, TARGET_LABEL);
-                                
-                                Log.d(TAG, "YOLOv10 found " + yoloResults.size() + " total detections, " + filteredYoloResults.size() + " person detections");
-                                
+                                List<YOLOv10Detector.Detection> filteredYoloResults = DetectionAdapter
+                                        .filterYOLOv10DetectionsByLabel(yoloResults, TARGET_LABEL);
+
+                                Log.d(TAG, "YOLOv10 found " + yoloResults.size() + " total detections, "
+                                        + filteredYoloResults.size() + " person detections");
+
                                 // Convert sang format Task Vision API
                                 results = DetectionAdapter.convertYOLOv10Detections(filteredYoloResults);
-                                
+
                                 Log.d(TAG, "Converted to " + results.size() + " Task Vision detections");
                             } else {
                                 // Sử dụng Task Vision API ObjectDetector
                                 // Sử dụng TFLite Support Library để xử lý ảnh
                                 TensorImage tensorImage = TensorImage.fromBitmap(bitmap);
-                                
+
                                 // Xoay ảnh nếu cần thiết
                                 ImageProcessor imageProcessor = new ImageProcessor.Builder()
-                                    .add(new Rot90Op(-image.getImageInfo().getRotationDegrees() / 90))
-                                    .build();
+                                        .add(new Rot90Op(-image.getImageInfo().getRotationDegrees() / 90))
+                                        .build();
                                 tensorImage = imageProcessor.process(tensorImage);
 
                                 // Chạy model
                                 List<Detection> taskResults = objectDetector.detect(tensorImage);
-                                
+
                                 // Lọc chỉ lấy những detection có label mong muốn
                                 results = filterDetectionsByLabel(taskResults, TARGET_LABEL);
                             }
@@ -424,7 +436,8 @@ public class CameraAIFragment extends Fragment {
                             if (getActivity() != null && !getActivity().isFinishing() && overlayView != null) {
                                 getActivity().runOnUiThread(() -> {
                                     try {
-                                        String command = overlayView.setResults(results, image.getWidth(), image.getHeight());
+                                        String command = overlayView.setResults(results, image.getWidth(),
+                                                image.getHeight());
                                         sendRobotCommand(command);
                                     } catch (Exception e) {
                                         Log.e(TAG, "Error updating overlay", e);
@@ -446,21 +459,54 @@ public class CameraAIFragment extends Fragment {
                 cameraProvider.bindToLifecycle(this, cameraSelector, preview);
                 Log.d(TAG, "Camera bound with preview only (detector not ready)");
             }
-            
+
         } catch (Exception e) {
             Log.e(TAG, "Error binding camera use cases", e);
+        }
+    }
+
+    private void setupScanButton(View view) {
+        scanButton = view.findViewById(R.id.scanButton);
+        scanButton.setOnClickListener(v -> {
+            boolean wasScanning = isScanning;
+            isScanning = !isScanning;
+            updateScanButtonState();
+            Log.d(TAG, "Scan button clicked - wasScanning: " + wasScanning + ", isScanning: " + isScanning);
+            if (wasScanning) {
+                // Send ST command when stopping the scan
+                Log.d(TAG, "Sending ST command to stop robot");
+                sendRobotCommand("ST");
+            }
+        });
+        updateScanButtonState();
+    }
+
+    private void updateScanButtonState() {
+        if (scanButton != null) {
+            scanButton.setImageResource(
+                    isScanning ? android.R.drawable.ic_media_pause : android.R.drawable.ic_media_play);
+            Log.d(TAG, "Button state updated - isScanning: " + isScanning);
         }
     }
 
     private void sendRobotCommand(String command) {
         try {
             if (robotCommunication != null && robotCommunication.isConnected()) {
-                robotCommunication.sendRobotCommand(command);
+                // Always allow ST command, but other commands only when scanning
+                if (command.equals("ST") || isScanning) {
+                    Log.d(TAG, "Sending command: " + command);
+                    robotCommunication.sendRobotCommand(command);
+                } else {
+                    Log.d(TAG, "Skipping command " + command + " - scanning is disabled");
+                }
+            } else {
+                Log.w(TAG, "Cannot send command - robot not connected");
             }
         } catch (Exception e) {
             Log.e(TAG, "Error sending robot command", e);
         }
     }
+
     private List<Detection> filterDetectionsByLabel(List<Detection> detections, String label) {
         List<Detection> filteredResults = new ArrayList<>();
         for (Detection detection : detections) {
@@ -478,36 +524,36 @@ public class CameraAIFragment extends Fragment {
     public void onDestroy() {
         Log.d(TAG, "onDestroy called");
         super.onDestroy();
-        
+
         // Clean up everything
         cleanupCamera();
         cleanupDetectors();
         cleanupExecutor();
     }
-    
+
     @Override
     public void onPause() {
         super.onPause();
         Log.d(TAG, "onPause called");
-        
+
         // Don't stop camera on pause to handle orientation changes
         // Only stop if fragment is being destroyed
         if (getActivity() != null && getActivity().isFinishing()) {
             cleanupCamera();
         }
     }
-    
+
     @Override
     public void onResume() {
         super.onResume();
         Log.d(TAG, "onResume called");
-        
+
         // Restart camera executor if needed
         try {
             if (cameraExecutor == null || cameraExecutor.isShutdown()) {
                 cameraExecutor = Executors.newSingleThreadExecutor();
             }
-            
+
             // If camera was stopped and we have permissions, restart it
             if (!isCameraStarted && allPermissionsGranted() && isDetectorInitialized) {
                 startCamera();
@@ -516,27 +562,27 @@ public class CameraAIFragment extends Fragment {
             Log.e(TAG, "Error in onResume", e);
         }
     }
-    
+
     @Override
     public void onDestroyView() {
         Log.d(TAG, "onDestroyView called");
         super.onDestroyView();
-        
+
         // Clean up camera when view is destroyed (orientation change)
         cleanupCamera();
     }
-    
+
     @Override
     public void onDetach() {
         Log.d(TAG, "onDetach called");
         super.onDetach();
-        
+
         // Final cleanup
         cleanupCamera();
         cleanupDetectors();
         cleanupExecutor();
     }
-    
+
     private void cleanupCamera() {
         try {
             if (cameraProvider != null) {
@@ -549,7 +595,7 @@ public class CameraAIFragment extends Fragment {
             Log.e(TAG, "Error cleaning up camera", e);
         }
     }
-    
+
     private void cleanupExecutor() {
         try {
             if (cameraExecutor != null && !cameraExecutor.isShutdown()) {
@@ -560,4 +606,4 @@ public class CameraAIFragment extends Fragment {
             Log.e(TAG, "Error shutting down cameraExecutor", e);
         }
     }
-} 
+}
