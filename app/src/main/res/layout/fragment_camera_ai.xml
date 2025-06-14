@@ -31,6 +31,22 @@
         android:visibility="visible"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintStart_toStartOf="parent" />
+        
+    <!-- No Robot Warning -->
+    <TextView
+        android:id="@+id/noRobotWarning"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Robot không được kết nối. AI vẫn hoạt động nhưng không thể điều khiển robot."
+        android:textSize="14sp"
+        android:textColor="@android:color/white"
+        android:background="#80FF0000"
+        android:padding="8dp"
+        android:gravity="center"
+        android:visibility="gone"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
 
     <com.google.android.material.floatingactionbutton.FloatingActionButton
         android:id="@+id/scanButton"

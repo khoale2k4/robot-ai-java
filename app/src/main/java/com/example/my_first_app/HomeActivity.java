@@ -6,11 +6,13 @@ import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentManager;
 import androidx.fragment.app.FragmentTransaction;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
+import android.widget.Toast;
 
 public class HomeActivity extends AppCompatActivity {
     
     private BottomNavigationView bottomNavigationView;
     private FragmentManager fragmentManager;
+    private boolean isRobotConnected = false;
     
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -18,6 +20,7 @@ public class HomeActivity extends AppCompatActivity {
         setContentView(R.layout.activity_home);
         
         initializeViews();
+        checkRobotConnection();
         setupBottomNavigation();
         
         // Load default fragment (Robot Control)
@@ -29,6 +32,16 @@ public class HomeActivity extends AppCompatActivity {
     private void initializeViews() {
         bottomNavigationView = findViewById(R.id.bottom_navigation);
         fragmentManager = getSupportFragmentManager();
+    }
+    
+    private void checkRobotConnection() {
+        // Check if robot is connected
+        RobotCommunicationInterface robotCommunication = ConnectionManager.getInstance().getCommunicationService();
+        isRobotConnected = (robotCommunication != null && robotCommunication.isConnected());
+        
+        if (!isRobotConnected) {
+            Toast.makeText(this, "Không có kết nối với robot. Một số tính năng có thể bị hạn chế.", Toast.LENGTH_LONG).show();
+        }
     }
     
     private void setupBottomNavigation() {

@@ -12,6 +12,7 @@ import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.LinearLayout;
 import android.widget.ListView;
 import android.widget.ProgressBar;
 import android.widget.TextView;
@@ -41,6 +42,7 @@ public class BLEConnectionActivity extends AppCompatActivity implements BLEServi
     private ProgressBar progressBar;
     private TextView statusTextView;
     private TextView receivedDataTextView;
+    private LinearLayout communicationContainer;
     
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -63,6 +65,7 @@ public class BLEConnectionActivity extends AppCompatActivity implements BLEServi
         progressBar = findViewById(R.id.progressBar);
         statusTextView = findViewById(R.id.statusTextView);
         receivedDataTextView = findViewById(R.id.receivedDataTextView);
+        communicationContainer = findViewById(R.id.communicationContainer);
         
         scanButton.setOnClickListener(v -> {
             if (bleService.isScanning()) {
@@ -79,6 +82,7 @@ public class BLEConnectionActivity extends AppCompatActivity implements BLEServi
         progressBar.setVisibility(View.GONE);
         disconnectButton.setVisibility(View.GONE);
         sendButton.setEnabled(false);
+        communicationContainer.setVisibility(View.GONE);
     }
     
     private void setupBLEService() {
@@ -228,6 +232,7 @@ public class BLEConnectionActivity extends AppCompatActivity implements BLEServi
             scanButton.setEnabled(true);
             disconnectButton.setVisibility(View.GONE);
             sendButton.setEnabled(false);
+            communicationContainer.setVisibility(View.GONE);
             
             statusTextView.setText("Mất kết nối");
             Toast.makeText(this, "Mất kết nối", Toast.LENGTH_SHORT).show();
@@ -286,6 +291,7 @@ public class BLEConnectionActivity extends AppCompatActivity implements BLEServi
             scanButton.setEnabled(true);
             disconnectButton.setVisibility(View.GONE);
             sendButton.setEnabled(false);
+            communicationContainer.setVisibility(View.GONE);
             
             statusTextView.setText("Đã ngắt kết nối");
             Toast.makeText(this, "Đã ngắt kết nối", Toast.LENGTH_SHORT).show();
@@ -299,6 +305,7 @@ public class BLEConnectionActivity extends AppCompatActivity implements BLEServi
             scanButton.setEnabled(true);
             disconnectButton.setVisibility(View.GONE);
             sendButton.setEnabled(false);
+            communicationContainer.setVisibility(View.GONE);
             
             statusTextView.setText("Kết nối thất bại");
             showAlert("Lỗi kết nối", error);
