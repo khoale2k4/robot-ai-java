@@ -1,7 +1,8 @@
 // OverlayView.java
-package com.example.my_first_app; // Thay đổi package name
+package com.example.my_first_app;
 
 import android.content.Context;
+import android.util.Pair;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
@@ -61,34 +62,22 @@ public class OverlayView extends View {
         this.imageWidth = imageWidth;
         this.imageHeight = imageHeight;
 
-        // Phân tích kết quả
-        String analyzed = analyzePersonPosition(results);
-
-        String newCommand;
-        if (analyzed.contains("XOAY TRÁI")) {
-            newCommand = "TL";
-        } else if (analyzed.contains("TIẾN")) {
-            newCommand = "FW";
-        } else if (analyzed.contains("DỪNG")) {
-            newCommand = "ST";
-        } else if (analyzed.contains("XOAY PHẢI")) {
-            newCommand = "TR";
-        } else {
-            newCommand = "SR";
-        }
+        // analyzePersonPosition giờ trả về lệnh BLE dạng "FW:0.50"
+        Pair<String, String> result = analyzePersonPosition(results);
+        String commandWithSpeed = result.second;
 
         long currentTime = System.currentTimeMillis();
-        if (!newCommand.equals(lastCommand) || currentTime - lastCommandTime >= COMMAND_INTERVAL_MS) {
-            callBackCommand = newCommand;
-            lastCommand = newCommand;
+        if (!commandWithSpeed.equals(lastCommand) || currentTime - lastCommandTime >= COMMAND_INTERVAL_MS) {
+            callBackCommand = commandWithSpeed;
+            lastCommand = commandWithSpeed;
             lastCommandTime = currentTime;
-            Log.d("OverlayView", "New command issued: " + newCommand);
+            Log.d("OverlayView", "New command issued: " + commandWithSpeed);
         } else {
-            Log.d("OverlayView", "Same command within interval, skip sending: " + newCommand);
+            Log.d("OverlayView", "Same command within interval, skip sending: " + commandWithSpeed);
         }
 
         invalidate(); // vẽ lại giao diện
-        return callBackCommand;
+        return callBackCommand; // trả về ví dụ: "TL:0.30"
     }
 
     @Override
@@ -99,18 +88,13 @@ public class OverlayView extends View {
         Log.d("OverlayView",
                 "View size: " + getWidth() + "x" + getHeight() + ", Image size: " + imageWidth + "x" + imageHeight);
 
-        // Phân tích và hiển thị lệnh điều khiển
-        String command = analyzePersonPosition(results);
-        if (command.contains("XOAY TRÁI")) {
-            callBackCommand = "TL";
-        } else if (command.contains("TIẾN")) {
-            callBackCommand = "FW";
-        } else if (command.contains("DỪNG")) {
-            callBackCommand = "ST";
-        } else {
-            callBackCommand = "TR";
-        }
-        displayCommand(canvas, command);
+        // Phân tích kết quả → lấy mô tả hiển thị + lệnh robot
+        Pair<String, String> result = analyzePersonPosition(results);
+        String displayText = result.first; // hiển thị lên màn hình
+        callBackCommand = result.second; // lệnh gửi BLE: "FW:0.50"
+
+        // Vẽ text hiển thị
+        displayCommand(canvas, displayText);
 
         if (results == null || results.isEmpty()) {
             Log.d("OverlayView", "No results to draw, showing 'no person detected' message");
@@ -123,32 +107,25 @@ public class OverlayView extends View {
         float scaleY = (float) getHeight() / imageHeight;
 
         for (int i = 0; i < results.size(); i++) {
-            Detection result = results.get(i);
-            RectF box = result.getBoundingBox();
+            Detection resultItem = results.get(i);
+            RectF box = resultItem.getBoundingBox();
 
-            // Chọn màu cho object này
             int colorIndex = i % colors.length;
             int currentColor = colors[colorIndex];
             boxPaint.setColor(currentColor);
             backgroundPaint.setColor(currentColor);
 
-            // Chuyển đổi tọa độ từ ảnh gốc sang view
             float left = box.left * scaleX;
             float top = box.top * scaleY;
             float right = box.right * scaleX;
             float bottom = box.bottom * scaleY;
 
-            // Clamp coordinates to view bounds
             left = Math.max(0, Math.min(left, getWidth()));
             top = Math.max(0, Math.min(top, getHeight()));
             right = Math.max(0, Math.min(right, getWidth()));
             bottom = Math.max(0, Math.min(bottom, getHeight()));
 
-            Log.d("OverlayView", "Drawing box " + i + ": left=" + left + ", top=" + top + ", right=" + right
-                    + ", bottom=" + bottom + ", color=" + Integer.toHexString(currentColor));
-
-            // Vẽ bounding box với double border để rõ ràng hơn
-            // Vẽ viền ngoài màu trắng trước
+            // Vẽ viền ngoài trắng
             boxPaint.setColor(Color.WHITE);
             boxPaint.setStrokeWidth(10f);
             canvas.drawRect(left, top, right, bottom, boxPaint);
@@ -158,35 +135,30 @@ public class OverlayView extends View {
             boxPaint.setStrokeWidth(6f);
             canvas.drawRect(left, top, right, bottom, boxPaint);
 
-            // Lấy thông tin label và confidence
-            if (!result.getCategories().isEmpty()) {
-                Category category = result.getCategories().get(0);
+            // Vẽ label + confidence
+            if (!resultItem.getCategories().isEmpty()) {
+                Category category = resultItem.getCategories().get(0);
                 String text = category.getLabel() + " " + String.format("%.1f%%", category.getScore() * 100);
 
-                // Đo kích thước text để vẽ background
                 float textWidth = textPaint.measureText(text);
                 float textHeight = textPaint.getTextSize();
 
-                // Vẽ background cho text
                 float textLeft = left;
                 float textTop = top - textHeight - 10;
                 float textRight = textLeft + textWidth + 20;
                 float textBottom = top - 5;
 
-                // Đảm bảo text không bị cắt ở đầu màn hình
                 if (textTop < 0) {
                     textTop = bottom + 5;
                     textBottom = textTop + textHeight + 10;
                 }
 
                 canvas.drawRect(textLeft, textTop, textRight, textBottom, backgroundPaint);
-
-                // Vẽ text
                 canvas.drawText(text, textLeft + 10, textBottom - 15, textPaint);
             }
         }
 
-        // Hiển thị số lượng objects được phát hiện
+        // Vẽ tổng số đối tượng
         if (!results.isEmpty()) {
             String countText = "Phát hiện: " + results.size() + " đối tượng";
             textPaint.setColor(Color.WHITE);
@@ -202,9 +174,10 @@ public class OverlayView extends View {
         }
     }
 
-    private String analyzePersonPosition(List<Detection> results) {
+    private Pair<String, String> analyzePersonPosition(List<Detection> results) {
         if (results == null || results.isEmpty()) {
-            return "XOAY PHẢI - Tìm kiếm người";
+            String cmd = Instruction.getCommand(Instruction.TURN_RIGHT, 0.3f);
+            return new Pair<>("XOAY PHẢI - Tìm kiếm người", cmd);
         }
 
         Detection bestPerson = null;
@@ -235,7 +208,8 @@ public class OverlayView extends View {
         }
 
         if (bestPerson == null) {
-            return "XOAY PHẢI - Tìm kiếm người";
+            String cmd = Instruction.getCommand(Instruction.TURN_RIGHT, 0.3f);
+            return new Pair<>("XOAY PHẢI - Tìm kiếm người", cmd);
         }
 
         RectF personBox = bestPerson.getBoundingBox();
@@ -251,29 +225,34 @@ public class OverlayView extends View {
         float angular = control[1];
 
         String movement;
+        String command;
+
         if (Math.abs(linear) < 0.05f) {
             movement = "DỪNG";
+            command = Instruction.STOP;
         } else if (linear > 0) {
             movement = "TIẾN";
+            command = Instruction.getCommand(Instruction.FORWARD, Math.abs(linear));
         } else {
             movement = "LÙI";
+            command = Instruction.getCommand(Instruction.BACKWARD, Math.abs(linear));
         }
 
         String turn;
         if (angular < -0.1f) {
             turn = "XOAY TRÁI";
+            command = Instruction.getCommand(Instruction.TURN_LEFT, Math.abs(angular));
         } else if (angular > 0.1f) {
             turn = "XOAY PHẢI";
+            command = Instruction.getCommand(Instruction.TURN_RIGHT, Math.abs(angular));
         } else {
             turn = "ĐI THẲNG";
         }
 
         String distance = estimateDistance(bboxPerson[2], bboxPerson[3]);
-
-        // ⚠️ Bổ sung tốc độ vào thông báo
         String speedInfo = String.format(" | Tốc độ: %.2f | Góc: %.2f", linear, angular);
 
-        return movement + " - " + turn + " | " + distance + speedInfo;
+        return new Pair<>(movement + " - " + turn + " | " + distance + speedInfo, command);
     }
 
     private String estimateDistance(float personWidth, float personHeight) {
