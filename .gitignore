@@ -1,15 +1,19 @@
+# Ignore chung
 *.iml
 .gradle
 /local.properties
-/.idea/caches
-/.idea/libraries
-/.idea/modules.xml
-/.idea/workspace.xml
-/.idea/navEditor.xml
-/.idea/assetWizardSettings.xml
-.DS_Store
-/build
-/captures
-.externalNativeBuild
-.cxx
+/.idea/
+/.DS_Store
+/build/
+/captures/
+/.externalNativeBuild/
+/.cxx/
 local.properties
+
+# Ignore toàn bộ build trừ debug APK cụ thể
+**/build/
+!app/build/
+!app/build/outputs/
+!app/build/outputs/apk/
+!app/build/outputs/apk/debug/
+!app/build/outputs/apk/debug/app-debug.apk
