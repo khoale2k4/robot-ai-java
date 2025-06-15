@@ -1,0 +1,50 @@
+[
+    {
+        "merged": "com.example.my_first_app-mergeDebugResources-48:/layout/fragment_dashboard.xml",
+        "source": "com.example.my_first_app-main-51:/layout/fragment_dashboard.xml"
+    },
+    {
+        "merged": "com.example.my_first_app-mergeDebugResources-48:/layout/activity_home.xml",
+        "source": "com.example.my_first_app-main-51:/layout/activity_home.xml"
+    },
+    {
+        "merged": "com.example.my_first_app-mergeDebugResources-48:/layout/activity_ble_connection.xml",
+        "source": "com.example.my_first_app-main-51:/layout/activity_ble_connection.xml"
+    },
+    {
+        "merged": "com.example.my_first_app-mergeDebugResources-48:/layout/item_ble_device.xml",
+        "source": "com.example.my_first_app-main-51:/layout/item_ble_device.xml"
+    },
+    {
+        "merged": "com.example.my_first_app-mergeDebugResources-48:/layout/activity_main.xml",
+        "source": "com.example.my_first_app-main-51:/layout/activity_main.xml"
+    },
+    {
+        "merged": "com.example.my_first_app-mergeDebugResources-48:/layout/activity_bluetooth_connection.xml",
+        "source": "com.example.my_first_app-main-51:/layout/activity_bluetooth_connection.xml"
+    },
+    {
+        "merged": "com.example.my_first_app-mergeDebugResources-48:/layout/fragment_home.xml",
+        "source": "com.example.my_first_app-main-51:/layout/fragment_home.xml"
+    },
+    {
+        "merged": "com.example.my_first_app-mergeDebugResources-48:/layout/fragment_settings.xml",
+        "source": "com.example.my_first_app-main-51:/layout/fragment_settings.xml"
+    },
+    {
+        "merged": "com.example.my_first_app-mergeDebugResources-48:/layout/fragment_robot_control.xml",
+        "source": "com.example.my_first_app-main-51:/layout/fragment_robot_control.xml"
+    },
+    {
+        "merged": "com.example.my_first_app-mergeDebugResources-48:/layout/activity_robot_control.xml",
+        "source": "com.example.my_first_app-main-51:/layout/activity_robot_control.xml"
+    },
+    {
+        "merged": "com.example.my_first_app-mergeDebugResources-48:/layout/fragment_notifications.xml",
+        "source": "com.example.my_first_app-main-51:/layout/fragment_notifications.xml"
+    },
+    {
+        "merged": "com.example.my_first_app-mergeDebugResources-48:/layout/fragment_camera_ai.xml",
+        "source": "com.example.my_first_app-main-51:/layout/fragment_camera_ai.xml"
+    }
+]

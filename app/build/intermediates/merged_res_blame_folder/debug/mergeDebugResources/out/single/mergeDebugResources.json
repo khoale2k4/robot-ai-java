@@ -1,0 +1,246 @@
+[
+    {
+        "merged": "com.example.my_first_app-debug-49:/drawable_button_cancel.xml.flat",
+        "source": "com.example.my_first_app-main-51:/drawable/button_cancel.xml"
+    },
+    {
+        "merged": "com.example.my_first_app-debug-49:/drawable_button_primary.xml.flat",
+        "source": "com.example.my_first_app-main-51:/drawable/button_primary.xml"
+    },
+    {
+        "merged": "com.example.my_first_app-debug-49:/anim_spinning_arc.xml.flat",
+        "source": "com.example.my_first_app-main-51:/anim/spinning_arc.xml"
+    },
+    {
+        "merged": "com.example.my_first_app-debug-49:/drawable_ic_launcher_background.xml.flat",
+        "source": "com.example.my_first_app-main-51:/drawable/ic_launcher_background.xml"
+    },
+    {
+        "merged": "com.example.my_first_app-debug-49:/layout_activity_ble_connection.xml.flat",
+        "source": "com.example.my_first_app-main-51:/layout/activity_ble_connection.xml"
+    },
+    {
+        "merged": "com.example.my_first_app-debug-49:/layout_item_ble_device.xml.flat",
+        "source": "com.example.my_first_app-main-51:/layout/item_ble_device.xml"
+    },
+    {
+        "merged": "com.example.my_first_app-debug-49:/drawable_ic_launcher_foreground.xml.flat",
+        "source": "com.example.my_first_app-main-51:/drawable/ic_launcher_foreground.xml"
+    },
+    {
+        "merged": "com.example.my_first_app-debug-49:/drawable_ic_bluetooth.xml.flat",
+        "source": "com.example.my_first_app-main-51:/drawable/ic_bluetooth.xml"
+    },
+    {
+        "merged": "com.example.my_first_app-debug-49:/mipmap-xxhdpi_ic_launcher_round.webp.flat",
+        "source": "com.example.my_first_app-main-51:/mipmap-xxhdpi/ic_launcher_round.webp"
+    },
+    {
+        "merged": "com.example.my_first_app-debug-49:/drawable_button_danger.xml.flat",
+        "source": "com.example.my_first_app-main-51:/drawable/button_danger.xml"
+    },
+    {
+        "merged": "com.example.my_first_app-debug-49:/drawable_rounded_background.xml.flat",
+        "source": "com.example.my_first_app-main-51:/drawable/rounded_background.xml"
+    },
+    {
+        "merged": "com.example.my_first_app-debug-49:/drawable_scan_circle_inner.xml.flat",
+        "source": "com.example.my_first_app-main-51:/drawable/scan_circle_inner.xml"
+    },
+    {
+        "merged": "com.example.my_first_app-debug-49:/drawable_button_skip.xml.flat",
+        "source": "com.example.my_first_app-main-51:/drawable/button_skip.xml"
+    },
+    {
+        "merged": "com.example.my_first_app-debug-49:/mipmap-xxxhdpi_ic_launcher.webp.flat",
+        "source": "com.example.my_first_app-main-51:/mipmap-xxxhdpi/ic_launcher.webp"
+    },
+    {
+        "merged": "com.example.my_first_app-debug-49:/mipmap-mdpi_ic_launcher.webp.flat",
+        "source": "com.example.my_first_app-main-51:/mipmap-mdpi/ic_launcher.webp"
+    },
+    {
+        "merged": "com.example.my_first_app-debug-49:/layout_fragment_camera_ai.xml.flat",
+        "source": "com.example.my_first_app-main-51:/layout/fragment_camera_ai.xml"
+    },
+    {
+        "merged": "com.example.my_first_app-debug-49:/layout_activity_bluetooth_connection.xml.flat",
+        "source": "com.example.my_first_app-main-51:/layout/activity_bluetooth_connection.xml"
+    },
+    {
+        "merged": "com.example.my_first_app-debug-49:/drawable_home_indicator.xml.flat",
+        "source": "com.example.my_first_app-main-51:/drawable/home_indicator.xml"
+    },
+    {
+        "merged": "com.example.my_first_app-debug-49:/drawable_device_item_bg.xml.flat",
+        "source": "com.example.my_first_app-main-51:/drawable/device_item_bg.xml"
+    },
+    {
+        "merged": "com.example.my_first_app-debug-49:/menu_bottom_nav_menu.xml.flat",
+        "source": "com.example.my_first_app-main-51:/menu/bottom_nav_menu.xml"
+    },
+    {
+        "merged": "com.example.my_first_app-debug-49:/drawable_button_connect.xml.flat",
+        "source": "com.example.my_first_app-main-51:/drawable/button_connect.xml"
+    },
+    {
+        "merged": "com.example.my_first_app-debug-49:/drawable_bottom_container_bg.xml.flat",
+        "source": "com.example.my_first_app-main-51:/drawable/bottom_container_bg.xml"
+    },
+    {
+        "merged": "com.example.my_first_app-debug-49:/drawable_spinning_arc.xml.flat",
+        "source": "com.example.my_first_app-main-51:/drawable/spinning_arc.xml"
+    },
+    {
+        "merged": "com.example.my_first_app-debug-49:/mipmap-anydpi-v26_ic_launcher_round.xml.flat",
+        "source": "com.example.my_first_app-main-51:/mipmap-anydpi-v26/ic_launcher_round.xml"
+    },
+    {
+        "merged": "com.example.my_first_app-debug-49:/drawable_bg_card.xml.flat",
+        "source": "com.example.my_first_app-main-51:/drawable/bg_card.xml"
+    },
+    {
+        "merged": "com.example.my_first_app-debug-49:/xml_data_extraction_rules.xml.flat",
+        "source": "com.example.my_first_app-main-51:/xml/data_extraction_rules.xml"
+    },
+    {
+        "merged": "com.example.my_first_app-debug-49:/navigation_mobile_navigation.xml.flat",
+        "source": "com.example.my_first_app-main-51:/navigation/mobile_navigation.xml"
+    },
+    {
+        "merged": "com.example.my_first_app-debug-49:/layout_activity_home.xml.flat",
+        "source": "com.example.my_first_app-main-51:/layout/activity_home.xml"
+    },
+    {
+        "merged": "com.example.my_first_app-debug-49:/drawable_radar_sweep.xml.flat",
+        "source": "com.example.my_first_app-main-51:/drawable/radar_sweep.xml"
+    },
+    {
+        "merged": "com.example.my_first_app-debug-49:/drawable_device_icon_bg.xml.flat",
+        "source": "com.example.my_first_app-main-51:/drawable/device_icon_bg.xml"
+    },
+    {
+        "merged": "com.example.my_first_app-debug-49:/mipmap-xhdpi_ic_launcher_round.webp.flat",
+        "source": "com.example.my_first_app-main-51:/mipmap-xhdpi/ic_launcher_round.webp"
+    },
+    {
+        "merged": "com.example.my_first_app-debug-49:/layout_fragment_home.xml.flat",
+        "source": "com.example.my_first_app-main-51:/layout/fragment_home.xml"
+    },
+    {
+        "merged": "com.example.my_first_app-debug-49:/drawable_ic_robot.xml.flat",
+        "source": "com.example.my_first_app-main-51:/drawable/ic_robot.xml"
+    },
+    {
+        "merged": "com.example.my_first_app-debug-49:/drawable_swift_logo.png.flat",
+        "source": "com.example.my_first_app-main-51:/drawable/swift_logo.png"
+    },
+    {
+        "merged": "com.example.my_first_app-debug-49:/mipmap-anydpi-v26_ic_launcher.xml.flat",
+        "source": "com.example.my_first_app-main-51:/mipmap-anydpi-v26/ic_launcher.xml"
+    },
+    {
+        "merged": "com.example.my_first_app-debug-49:/layout_activity_main.xml.flat",
+        "source": "com.example.my_first_app-main-51:/layout/activity_main.xml"
+    },
+    {
+        "merged": "com.example.my_first_app-debug-49:/drawable_circle_border.xml.flat",
+        "source": "com.example.my_first_app-main-51:/drawable/circle_border.xml"
+    },
+    {
+        "merged": "com.example.my_first_app-debug-49:/mipmap-mdpi_ic_launcher_round.webp.flat",
+        "source": "com.example.my_first_app-main-51:/mipmap-mdpi/ic_launcher_round.webp"
+    },
+    {
+        "merged": "com.example.my_first_app-debug-49:/drawable_ic_dashboard_black_24dp.xml.flat",
+        "source": "com.example.my_first_app-main-51:/drawable/ic_dashboard_black_24dp.xml"
+    },
+    {
+        "merged": "com.example.my_first_app-debug-49:/layout_activity_robot_control.xml.flat",
+        "source": "com.example.my_first_app-main-51:/layout/activity_robot_control.xml"
+    },
+    {
+        "merged": "com.example.my_first_app-debug-49:/drawable_ic_home_black_24dp.xml.flat",
+        "source": "com.example.my_first_app-main-51:/drawable/ic_home_black_24dp.xml"
+    },
+    {
+        "merged": "com.example.my_first_app-debug-49:/anim_pulse_animation.xml.flat",
+        "source": "com.example.my_first_app-main-51:/anim/pulse_animation.xml"
+    },
+    {
+        "merged": "com.example.my_first_app-debug-49:/drawable_ic_notifications_black_24dp.xml.flat",
+        "source": "com.example.my_first_app-main-51:/drawable/ic_notifications_black_24dp.xml"
+    },
+    {
+        "merged": "com.example.my_first_app-debug-49:/drawable_bg_status_box.xml.flat",
+        "source": "com.example.my_first_app-main-51:/drawable/bg_status_box.xml"
+    },
+    {
+        "merged": "com.example.my_first_app-debug-49:/drawable_list_background.xml.flat",
+        "source": "com.example.my_first_app-main-51:/drawable/list_background.xml"
+    },
+    {
+        "merged": "com.example.my_first_app-debug-49:/mipmap-xxhdpi_ic_launcher.webp.flat",
+        "source": "com.example.my_first_app-main-51:/mipmap-xxhdpi/ic_launcher.webp"
+    },
+    {
+        "merged": "com.example.my_first_app-debug-49:/anim_fade_in.xml.flat",
+        "source": "com.example.my_first_app-main-51:/anim/fade_in.xml"
+    },
+    {
+        "merged": "com.example.my_first_app-debug-49:/menu_bottom_navigation_menu.xml.flat",
+        "source": "com.example.my_first_app-main-51:/menu/bottom_navigation_menu.xml"
+    },
+    {
+        "merged": "com.example.my_first_app-debug-49:/mipmap-xhdpi_ic_launcher.webp.flat",
+        "source": "com.example.my_first_app-main-51:/mipmap-xhdpi/ic_launcher.webp"
+    },
+    {
+        "merged": "com.example.my_first_app-debug-49:/mipmap-hdpi_ic_launcher_round.webp.flat",
+        "source": "com.example.my_first_app-main-51:/mipmap-hdpi/ic_launcher_round.webp"
+    },
+    {
+        "merged": "com.example.my_first_app-debug-49:/layout_fragment_robot_control.xml.flat",
+        "source": "com.example.my_first_app-main-51:/layout/fragment_robot_control.xml"
+    },
+    {
+        "merged": "com.example.my_first_app-debug-49:/anim_ripple_effect.xml.flat",
+        "source": "com.example.my_first_app-main-51:/anim/ripple_effect.xml"
+    },
+    {
+        "merged": "com.example.my_first_app-debug-49:/drawable_scan_ring_outer.xml.flat",
+        "source": "com.example.my_first_app-main-51:/drawable/scan_ring_outer.xml"
+    },
+    {
+        "merged": "com.example.my_first_app-debug-49:/drawable_button_primary_mint.xml.flat",
+        "source": "com.example.my_first_app-main-51:/drawable/button_primary_mint.xml"
+    },
+    {
+        "merged": "com.example.my_first_app-debug-49:/xml_backup_rules.xml.flat",
+        "source": "com.example.my_first_app-main-51:/xml/backup_rules.xml"
+    },
+    {
+        "merged": "com.example.my_first_app-debug-49:/layout_fragment_dashboard.xml.flat",
+        "source": "com.example.my_first_app-main-51:/layout/fragment_dashboard.xml"
+    },
+    {
+        "merged": "com.example.my_first_app-debug-49:/anim_radar_sweep.xml.flat",
+        "source": "com.example.my_first_app-main-51:/anim/radar_sweep.xml"
+    },
+    {
+        "merged": "com.example.my_first_app-debug-49:/mipmap-xxxhdpi_ic_launcher_round.webp.flat",
+        "source": "com.example.my_first_app-main-51:/mipmap-xxxhdpi/ic_launcher_round.webp"
+    },
+    {
+        "merged": "com.example.my_first_app-debug-49:/layout_fragment_notifications.xml.flat",
+        "source": "com.example.my_first_app-main-51:/layout/fragment_notifications.xml"
+    },
+    {
+        "merged": "com.example.my_first_app-debug-49:/layout_fragment_settings.xml.flat",
+        "source": "com.example.my_first_app-main-51:/layout/fragment_settings.xml"
+    },
+    {
+        "merged": "com.example.my_first_app-debug-49:/mipmap-hdpi_ic_launcher.webp.flat",
+        "source": "com.example.my_first_app-main-51:/mipmap-hdpi/ic_launcher.webp"
+    }
+]

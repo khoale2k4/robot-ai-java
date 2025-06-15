@@ -1,0 +1,255 @@
+1<?xml version="1.0" encoding="utf-8"?>
+2<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+3    package="com.example.my_first_app"
+4    android:versionCode="1"
+5    android:versionName="1.0" >
+6
+7    <uses-sdk
+8        android:minSdkVersion="26"
+9        android:targetSdkVersion="34" />
+10
+11    <uses-permission android:name="android.permission.CAMERA" />
+11-->/Users/lekhoa/Desktop/Personal/ohstem/robot-ai-java/app/src/main/AndroidManifest.xml:4:5-65
+11-->/Users/lekhoa/Desktop/Personal/ohstem/robot-ai-java/app/src/main/AndroidManifest.xml:4:22-62
+12
+13    <uses-feature android:name="android.hardware.camera.any" />
+13-->/Users/lekhoa/Desktop/Personal/ohstem/robot-ai-java/app/src/main/AndroidManifest.xml:5:5-64
+13-->/Users/lekhoa/Desktop/Personal/ohstem/robot-ai-java/app/src/main/AndroidManifest.xml:5:19-61
+14
+15    <!-- Bluetooth permissions -->
+16    <uses-permission android:name="android.permission.BLUETOOTH" />
+16-->/Users/lekhoa/Desktop/Personal/ohstem/robot-ai-java/app/src/main/AndroidManifest.xml:8:5-68
+16-->/Users/lekhoa/Desktop/Personal/ohstem/robot-ai-java/app/src/main/AndroidManifest.xml:8:22-65
+17    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" />
+17-->/Users/lekhoa/Desktop/Personal/ohstem/robot-ai-java/app/src/main/AndroidManifest.xml:9:5-74
+17-->/Users/lekhoa/Desktop/Personal/ohstem/robot-ai-java/app/src/main/AndroidManifest.xml:9:22-71
+18    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+18-->/Users/lekhoa/Desktop/Personal/ohstem/robot-ai-java/app/src/main/AndroidManifest.xml:10:5-79
+18-->/Users/lekhoa/Desktop/Personal/ohstem/robot-ai-java/app/src/main/AndroidManifest.xml:10:22-76
+19    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+19-->/Users/lekhoa/Desktop/Personal/ohstem/robot-ai-java/app/src/main/AndroidManifest.xml:11:5-81
+19-->/Users/lekhoa/Desktop/Personal/ohstem/robot-ai-java/app/src/main/AndroidManifest.xml:11:22-78
+20
+21    <!-- For Android 12 and above -->
+22    <uses-permission
+22-->/Users/lekhoa/Desktop/Personal/ohstem/robot-ai-java/app/src/main/AndroidManifest.xml:14:5-120
+23        android:name="android.permission.BLUETOOTH_SCAN"
+23-->/Users/lekhoa/Desktop/Personal/ohstem/robot-ai-java/app/src/main/AndroidManifest.xml:14:22-70
+24        android:usesPermissionFlags="neverForLocation" />
+24-->/Users/lekhoa/Desktop/Personal/ohstem/robot-ai-java/app/src/main/AndroidManifest.xml:14:71-117
+25    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+25-->/Users/lekhoa/Desktop/Personal/ohstem/robot-ai-java/app/src/main/AndroidManifest.xml:15:5-76
+25-->/Users/lekhoa/Desktop/Personal/ohstem/robot-ai-java/app/src/main/AndroidManifest.xml:15:22-73
+26    <uses-permission android:name="android.permission.BLUETOOTH_ADVERTISE" />
+26-->/Users/lekhoa/Desktop/Personal/ohstem/robot-ai-java/app/src/main/AndroidManifest.xml:16:5-78
+26-->/Users/lekhoa/Desktop/Personal/ohstem/robot-ai-java/app/src/main/AndroidManifest.xml:16:22-75
+27
+28    <permission
+28-->[androidx.core:core:1.13.0] /Users/lekhoa/.gradle/caches/8.9/transforms/2255502659600dd761c0e8d6bd6f1d47/transformed/core-1.13.0/AndroidManifest.xml:22:5-24:47
+29        android:name="com.example.my_first_app.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION"
+29-->[androidx.core:core:1.13.0] /Users/lekhoa/.gradle/caches/8.9/transforms/2255502659600dd761c0e8d6bd6f1d47/transformed/core-1.13.0/AndroidManifest.xml:23:9-81
+30        android:protectionLevel="signature" />
+30-->[androidx.core:core:1.13.0] /Users/lekhoa/.gradle/caches/8.9/transforms/2255502659600dd761c0e8d6bd6f1d47/transformed/core-1.13.0/AndroidManifest.xml:24:9-44
+31
+32    <uses-permission android:name="com.example.my_first_app.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION" />
+32-->[androidx.core:core:1.13.0] /Users/lekhoa/.gradle/caches/8.9/transforms/2255502659600dd761c0e8d6bd6f1d47/transformed/core-1.13.0/AndroidManifest.xml:26:5-97
+32-->[androidx.core:core:1.13.0] /Users/lekhoa/.gradle/caches/8.9/transforms/2255502659600dd761c0e8d6bd6f1d47/transformed/core-1.13.0/AndroidManifest.xml:26:22-94
+33    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+34    <uses-permission android:name="android.permission.READ_PHONE_STATE" />
+35    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+36
+37    <application
+37-->/Users/lekhoa/Desktop/Personal/ohstem/robot-ai-java/app/src/main/AndroidManifest.xml:18:5-69:19
+38        android:allowBackup="true"
+38-->/Users/lekhoa/Desktop/Personal/ohstem/robot-ai-java/app/src/main/AndroidManifest.xml:19:9-35
+39        android:appComponentFactory="androidx.core.app.CoreComponentFactory"
+39-->[androidx.core:core:1.13.0] /Users/lekhoa/.gradle/caches/8.9/transforms/2255502659600dd761c0e8d6bd6f1d47/transformed/core-1.13.0/AndroidManifest.xml:28:18-86
+40        android:dataExtractionRules="@xml/data_extraction_rules"
+40-->/Users/lekhoa/Desktop/Personal/ohstem/robot-ai-java/app/src/main/AndroidManifest.xml:20:9-65
+41        android:debuggable="true"
+42        android:extractNativeLibs="false"
+43        android:fullBackupContent="@xml/backup_rules"
+43-->/Users/lekhoa/Desktop/Personal/ohstem/robot-ai-java/app/src/main/AndroidManifest.xml:21:9-54
+44        android:icon="@mipmap/ic_launcher"
+44-->/Users/lekhoa/Desktop/Personal/ohstem/robot-ai-java/app/src/main/AndroidManifest.xml:22:9-43
+45        android:label="@string/app_name"
+45-->/Users/lekhoa/Desktop/Personal/ohstem/robot-ai-java/app/src/main/AndroidManifest.xml:23:9-41
+46        android:roundIcon="@mipmap/ic_launcher_round"
+46-->/Users/lekhoa/Desktop/Personal/ohstem/robot-ai-java/app/src/main/AndroidManifest.xml:24:9-54
+47        android:supportsRtl="true"
+47-->/Users/lekhoa/Desktop/Personal/ohstem/robot-ai-java/app/src/main/AndroidManifest.xml:25:9-35
+48        android:theme="@style/Theme.My_first_app" >
+48-->/Users/lekhoa/Desktop/Personal/ohstem/robot-ai-java/app/src/main/AndroidManifest.xml:26:9-50
+49        <activity
+49-->/Users/lekhoa/Desktop/Personal/ohstem/robot-ai-java/app/src/main/AndroidManifest.xml:28:9-37:20
+50            android:name="com.example.my_first_app.MainActivity"
+50-->/Users/lekhoa/Desktop/Personal/ohstem/robot-ai-java/app/src/main/AndroidManifest.xml:29:13-41
+51            android:exported="true"
+51-->/Users/lekhoa/Desktop/Personal/ohstem/robot-ai-java/app/src/main/AndroidManifest.xml:30:13-36
+52            android:screenOrientation="landscape"
+52-->/Users/lekhoa/Desktop/Personal/ohstem/robot-ai-java/app/src/main/AndroidManifest.xml:31:13-50
+53            android:theme="@style/Theme.AppCompat.NoActionBar" >
+53-->/Users/lekhoa/Desktop/Personal/ohstem/robot-ai-java/app/src/main/AndroidManifest.xml:32:13-63
+54            <intent-filter>
+54-->/Users/lekhoa/Desktop/Personal/ohstem/robot-ai-java/app/src/main/AndroidManifest.xml:33:13-36:29
+55                <action android:name="android.intent.action.MAIN" />
+55-->/Users/lekhoa/Desktop/Personal/ohstem/robot-ai-java/app/src/main/AndroidManifest.xml:34:17-69
+55-->/Users/lekhoa/Desktop/Personal/ohstem/robot-ai-java/app/src/main/AndroidManifest.xml:34:25-66
+56
+57                <category android:name="android.intent.category.LAUNCHER" />
+57-->/Users/lekhoa/Desktop/Personal/ohstem/robot-ai-java/app/src/main/AndroidManifest.xml:35:17-77
+57-->/Users/lekhoa/Desktop/Personal/ohstem/robot-ai-java/app/src/main/AndroidManifest.xml:35:27-74
+58            </intent-filter>
+59        </activity>
+60
+61        <!-- Bluetooth connection activity -->
+62        <activity
+62-->/Users/lekhoa/Desktop/Personal/ohstem/robot-ai-java/app/src/main/AndroidManifest.xml:40:9-45:57
+63            android:name="com.example.my_first_app.BluetoothConnectionActivity"
+63-->/Users/lekhoa/Desktop/Personal/ohstem/robot-ai-java/app/src/main/AndroidManifest.xml:41:13-56
+64            android:exported="false"
+64-->/Users/lekhoa/Desktop/Personal/ohstem/robot-ai-java/app/src/main/AndroidManifest.xml:42:13-37
+65            android:label="@string/bluetooth_connection"
+65-->/Users/lekhoa/Desktop/Personal/ohstem/robot-ai-java/app/src/main/AndroidManifest.xml:43:13-57
+66            android:screenOrientation="portrait"
+66-->/Users/lekhoa/Desktop/Personal/ohstem/robot-ai-java/app/src/main/AndroidManifest.xml:44:13-49
+67            android:theme="@style/Theme.My_first_app" />
+67-->/Users/lekhoa/Desktop/Personal/ohstem/robot-ai-java/app/src/main/AndroidManifest.xml:45:13-54
+68
+69        <!-- BLE connection activity -->
+70        <activity
+70-->/Users/lekhoa/Desktop/Personal/ohstem/robot-ai-java/app/src/main/AndroidManifest.xml:48:9-53:57
+71            android:name="com.example.my_first_app.BLEConnectionActivity"
+71-->/Users/lekhoa/Desktop/Personal/ohstem/robot-ai-java/app/src/main/AndroidManifest.xml:49:13-50
+72            android:exported="false"
+72-->/Users/lekhoa/Desktop/Personal/ohstem/robot-ai-java/app/src/main/AndroidManifest.xml:50:13-37
+73            android:label="BLE Robot Connection"
+73-->/Users/lekhoa/Desktop/Personal/ohstem/robot-ai-java/app/src/main/AndroidManifest.xml:51:13-49
+74            android:screenOrientation="portrait"
+74-->/Users/lekhoa/Desktop/Personal/ohstem/robot-ai-java/app/src/main/AndroidManifest.xml:52:13-49
+75            android:theme="@style/Theme.My_first_app" />
+75-->/Users/lekhoa/Desktop/Personal/ohstem/robot-ai-java/app/src/main/AndroidManifest.xml:53:13-54
+76
+77        <!-- Robot control activity -->
+78        <activity
+78-->/Users/lekhoa/Desktop/Personal/ohstem/robot-ai-java/app/src/main/AndroidManifest.xml:56:9-61:57
+79            android:name="com.example.my_first_app.RobotControlActivity"
+79-->/Users/lekhoa/Desktop/Personal/ohstem/robot-ai-java/app/src/main/AndroidManifest.xml:57:13-49
+80            android:exported="false"
+80-->/Users/lekhoa/Desktop/Personal/ohstem/robot-ai-java/app/src/main/AndroidManifest.xml:58:13-37
+81            android:label="@string/robot_control"
+81-->/Users/lekhoa/Desktop/Personal/ohstem/robot-ai-java/app/src/main/AndroidManifest.xml:59:13-50
+82            android:screenOrientation="portrait"
+82-->/Users/lekhoa/Desktop/Personal/ohstem/robot-ai-java/app/src/main/AndroidManifest.xml:60:13-49
+83            android:theme="@style/Theme.My_first_app" />
+83-->/Users/lekhoa/Desktop/Personal/ohstem/robot-ai-java/app/src/main/AndroidManifest.xml:61:13-54
+84        <activity
+84-->/Users/lekhoa/Desktop/Personal/ohstem/robot-ai-java/app/src/main/AndroidManifest.xml:63:9-68:57
+85            android:name="com.example.my_first_app.HomeActivity"
+85-->/Users/lekhoa/Desktop/Personal/ohstem/robot-ai-java/app/src/main/AndroidManifest.xml:64:13-41
+86            android:configChanges="orientation|screenSize|keyboardHidden"
+86-->/Users/lekhoa/Desktop/Personal/ohstem/robot-ai-java/app/src/main/AndroidManifest.xml:66:13-74
+87            android:exported="false"
+87-->/Users/lekhoa/Desktop/Personal/ohstem/robot-ai-java/app/src/main/AndroidManifest.xml:65:13-37
+88            android:screenOrientation="sensor"
+88-->/Users/lekhoa/Desktop/Personal/ohstem/robot-ai-java/app/src/main/AndroidManifest.xml:67:13-47
+89            android:theme="@style/Theme.My_first_app" />
+89-->/Users/lekhoa/Desktop/Personal/ohstem/robot-ai-java/app/src/main/AndroidManifest.xml:68:13-54
+90
+91        <service
+91-->[androidx.camera:camera-camera2:1.3.4] /Users/lekhoa/.gradle/caches/8.9/transforms/205237e97100be4ce5fb829e52e5ff96/transformed/camera-camera2-1.3.4/AndroidManifest.xml:24:9-33:19
+92            android:name="androidx.camera.core.impl.MetadataHolderService"
+92-->[androidx.camera:camera-camera2:1.3.4] /Users/lekhoa/.gradle/caches/8.9/transforms/205237e97100be4ce5fb829e52e5ff96/transformed/camera-camera2-1.3.4/AndroidManifest.xml:25:13-75
+93            android:enabled="false"
+93-->[androidx.camera:camera-camera2:1.3.4] /Users/lekhoa/.gradle/caches/8.9/transforms/205237e97100be4ce5fb829e52e5ff96/transformed/camera-camera2-1.3.4/AndroidManifest.xml:26:13-36
+94            android:exported="false" >
+94-->[androidx.camera:camera-camera2:1.3.4] /Users/lekhoa/.gradle/caches/8.9/transforms/205237e97100be4ce5fb829e52e5ff96/transformed/camera-camera2-1.3.4/AndroidManifest.xml:27:13-37
+95            <meta-data
+95-->[androidx.camera:camera-camera2:1.3.4] /Users/lekhoa/.gradle/caches/8.9/transforms/205237e97100be4ce5fb829e52e5ff96/transformed/camera-camera2-1.3.4/AndroidManifest.xml:30:13-32:89
+96                android:name="androidx.camera.core.impl.MetadataHolderService.DEFAULT_CONFIG_PROVIDER"
+96-->[androidx.camera:camera-camera2:1.3.4] /Users/lekhoa/.gradle/caches/8.9/transforms/205237e97100be4ce5fb829e52e5ff96/transformed/camera-camera2-1.3.4/AndroidManifest.xml:31:17-103
+97                android:value="androidx.camera.camera2.Camera2Config$DefaultProvider" />
+97-->[androidx.camera:camera-camera2:1.3.4] /Users/lekhoa/.gradle/caches/8.9/transforms/205237e97100be4ce5fb829e52e5ff96/transformed/camera-camera2-1.3.4/AndroidManifest.xml:32:17-86
+98        </service>
+99
+100        <provider
+100-->[androidx.emoji2:emoji2:1.3.0] /Users/lekhoa/.gradle/caches/8.9/transforms/e3cec797fa613a670c3ab206a431db24/transformed/emoji2-1.3.0/AndroidManifest.xml:24:9-32:20
+101            android:name="androidx.startup.InitializationProvider"
+101-->[androidx.emoji2:emoji2:1.3.0] /Users/lekhoa/.gradle/caches/8.9/transforms/e3cec797fa613a670c3ab206a431db24/transformed/emoji2-1.3.0/AndroidManifest.xml:25:13-67
+102            android:authorities="com.example.my_first_app.androidx-startup"
+102-->[androidx.emoji2:emoji2:1.3.0] /Users/lekhoa/.gradle/caches/8.9/transforms/e3cec797fa613a670c3ab206a431db24/transformed/emoji2-1.3.0/AndroidManifest.xml:26:13-68
+103            android:exported="false" >
+103-->[androidx.emoji2:emoji2:1.3.0] /Users/lekhoa/.gradle/caches/8.9/transforms/e3cec797fa613a670c3ab206a431db24/transformed/emoji2-1.3.0/AndroidManifest.xml:27:13-37
+104            <meta-data
+104-->[androidx.emoji2:emoji2:1.3.0] /Users/lekhoa/.gradle/caches/8.9/transforms/e3cec797fa613a670c3ab206a431db24/transformed/emoji2-1.3.0/AndroidManifest.xml:29:13-31:52
+105                android:name="androidx.emoji2.text.EmojiCompatInitializer"
+105-->[androidx.emoji2:emoji2:1.3.0] /Users/lekhoa/.gradle/caches/8.9/transforms/e3cec797fa613a670c3ab206a431db24/transformed/emoji2-1.3.0/AndroidManifest.xml:30:17-75
+106                android:value="androidx.startup" />
+106-->[androidx.emoji2:emoji2:1.3.0] /Users/lekhoa/.gradle/caches/8.9/transforms/e3cec797fa613a670c3ab206a431db24/transformed/emoji2-1.3.0/AndroidManifest.xml:31:17-49
+107            <meta-data
+107-->[androidx.lifecycle:lifecycle-process:2.8.7] /Users/lekhoa/.gradle/caches/8.9/transforms/390915ac14dc8f96cd6bcead9aced9d2/transformed/lifecycle-process-2.8.7/AndroidManifest.xml:29:13-31:52
+108                android:name="androidx.lifecycle.ProcessLifecycleInitializer"
+108-->[androidx.lifecycle:lifecycle-process:2.8.7] /Users/lekhoa/.gradle/caches/8.9/transforms/390915ac14dc8f96cd6bcead9aced9d2/transformed/lifecycle-process-2.8.7/AndroidManifest.xml:30:17-78
+109                android:value="androidx.startup" />
+109-->[androidx.lifecycle:lifecycle-process:2.8.7] /Users/lekhoa/.gradle/caches/8.9/transforms/390915ac14dc8f96cd6bcead9aced9d2/transformed/lifecycle-process-2.8.7/AndroidManifest.xml:31:17-49
+110            <meta-data
+110-->[androidx.profileinstaller:profileinstaller:1.3.1] /Users/lekhoa/.gradle/caches/8.9/transforms/9e474b15ca3eb1be4eabda7ac4fb6eaf/transformed/profileinstaller-1.3.1/AndroidManifest.xml:29:13-31:52
+111                android:name="androidx.profileinstaller.ProfileInstallerInitializer"
+111-->[androidx.profileinstaller:profileinstaller:1.3.1] /Users/lekhoa/.gradle/caches/8.9/transforms/9e474b15ca3eb1be4eabda7ac4fb6eaf/transformed/profileinstaller-1.3.1/AndroidManifest.xml:30:17-85
+112                android:value="androidx.startup" />
+112-->[androidx.profileinstaller:profileinstaller:1.3.1] /Users/lekhoa/.gradle/caches/8.9/transforms/9e474b15ca3eb1be4eabda7ac4fb6eaf/transformed/profileinstaller-1.3.1/AndroidManifest.xml:31:17-49
+113        </provider>
+114
+115        <uses-library
+115-->[androidx.window:window:1.0.0] /Users/lekhoa/.gradle/caches/8.9/transforms/f35cc438aa10508e46c2ba10e54347f0/transformed/window-1.0.0/AndroidManifest.xml:25:9-27:40
+116            android:name="androidx.window.extensions"
+116-->[androidx.window:window:1.0.0] /Users/lekhoa/.gradle/caches/8.9/transforms/f35cc438aa10508e46c2ba10e54347f0/transformed/window-1.0.0/AndroidManifest.xml:26:13-54
+117            android:required="false" />
+117-->[androidx.window:window:1.0.0] /Users/lekhoa/.gradle/caches/8.9/transforms/f35cc438aa10508e46c2ba10e54347f0/transformed/window-1.0.0/AndroidManifest.xml:27:13-37
+118        <uses-library
+118-->[androidx.window:window:1.0.0] /Users/lekhoa/.gradle/caches/8.9/transforms/f35cc438aa10508e46c2ba10e54347f0/transformed/window-1.0.0/AndroidManifest.xml:28:9-30:40
+119            android:name="androidx.window.sidecar"
+119-->[androidx.window:window:1.0.0] /Users/lekhoa/.gradle/caches/8.9/transforms/f35cc438aa10508e46c2ba10e54347f0/transformed/window-1.0.0/AndroidManifest.xml:29:13-51
+120            android:required="false" />
+120-->[androidx.window:window:1.0.0] /Users/lekhoa/.gradle/caches/8.9/transforms/f35cc438aa10508e46c2ba10e54347f0/transformed/window-1.0.0/AndroidManifest.xml:30:13-37
+121
+122        <receiver
+122-->[androidx.profileinstaller:profileinstaller:1.3.1] /Users/lekhoa/.gradle/caches/8.9/transforms/9e474b15ca3eb1be4eabda7ac4fb6eaf/transformed/profileinstaller-1.3.1/AndroidManifest.xml:34:9-52:20
+123            android:name="androidx.profileinstaller.ProfileInstallReceiver"
+123-->[androidx.profileinstaller:profileinstaller:1.3.1] /Users/lekhoa/.gradle/caches/8.9/transforms/9e474b15ca3eb1be4eabda7ac4fb6eaf/transformed/profileinstaller-1.3.1/AndroidManifest.xml:35:13-76
+124            android:directBootAware="false"
+124-->[androidx.profileinstaller:profileinstaller:1.3.1] /Users/lekhoa/.gradle/caches/8.9/transforms/9e474b15ca3eb1be4eabda7ac4fb6eaf/transformed/profileinstaller-1.3.1/AndroidManifest.xml:36:13-44
+125            android:enabled="true"
+125-->[androidx.profileinstaller:profileinstaller:1.3.1] /Users/lekhoa/.gradle/caches/8.9/transforms/9e474b15ca3eb1be4eabda7ac4fb6eaf/transformed/profileinstaller-1.3.1/AndroidManifest.xml:37:13-35
+126            android:exported="true"
+126-->[androidx.profileinstaller:profileinstaller:1.3.1] /Users/lekhoa/.gradle/caches/8.9/transforms/9e474b15ca3eb1be4eabda7ac4fb6eaf/transformed/profileinstaller-1.3.1/AndroidManifest.xml:38:13-36
+127            android:permission="android.permission.DUMP" >
+127-->[androidx.profileinstaller:profileinstaller:1.3.1] /Users/lekhoa/.gradle/caches/8.9/transforms/9e474b15ca3eb1be4eabda7ac4fb6eaf/transformed/profileinstaller-1.3.1/AndroidManifest.xml:39:13-57
+128            <intent-filter>
+128-->[androidx.profileinstaller:profileinstaller:1.3.1] /Users/lekhoa/.gradle/caches/8.9/transforms/9e474b15ca3eb1be4eabda7ac4fb6eaf/transformed/profileinstaller-1.3.1/AndroidManifest.xml:40:13-42:29
+129                <action android:name="androidx.profileinstaller.action.INSTALL_PROFILE" />
+129-->[androidx.profileinstaller:profileinstaller:1.3.1] /Users/lekhoa/.gradle/caches/8.9/transforms/9e474b15ca3eb1be4eabda7ac4fb6eaf/transformed/profileinstaller-1.3.1/AndroidManifest.xml:41:17-91
+129-->[androidx.profileinstaller:profileinstaller:1.3.1] /Users/lekhoa/.gradle/caches/8.9/transforms/9e474b15ca3eb1be4eabda7ac4fb6eaf/transformed/profileinstaller-1.3.1/AndroidManifest.xml:41:25-88
+130            </intent-filter>
+131            <intent-filter>
+131-->[androidx.profileinstaller:profileinstaller:1.3.1] /Users/lekhoa/.gradle/caches/8.9/transforms/9e474b15ca3eb1be4eabda7ac4fb6eaf/transformed/profileinstaller-1.3.1/AndroidManifest.xml:43:13-45:29
+132                <action android:name="androidx.profileinstaller.action.SKIP_FILE" />
+132-->[androidx.profileinstaller:profileinstaller:1.3.1] /Users/lekhoa/.gradle/caches/8.9/transforms/9e474b15ca3eb1be4eabda7ac4fb6eaf/transformed/profileinstaller-1.3.1/AndroidManifest.xml:44:17-85
+132-->[androidx.profileinstaller:profileinstaller:1.3.1] /Users/lekhoa/.gradle/caches/8.9/transforms/9e474b15ca3eb1be4eabda7ac4fb6eaf/transformed/profileinstaller-1.3.1/AndroidManifest.xml:44:25-82
+133            </intent-filter>
+134            <intent-filter>
+134-->[androidx.profileinstaller:profileinstaller:1.3.1] /Users/lekhoa/.gradle/caches/8.9/transforms/9e474b15ca3eb1be4eabda7ac4fb6eaf/transformed/profileinstaller-1.3.1/AndroidManifest.xml:46:13-48:29
+135                <action android:name="androidx.profileinstaller.action.SAVE_PROFILE" />
+135-->[androidx.profileinstaller:profileinstaller:1.3.1] /Users/lekhoa/.gradle/caches/8.9/transforms/9e474b15ca3eb1be4eabda7ac4fb6eaf/transformed/profileinstaller-1.3.1/AndroidManifest.xml:47:17-88
+135-->[androidx.profileinstaller:profileinstaller:1.3.1] /Users/lekhoa/.gradle/caches/8.9/transforms/9e474b15ca3eb1be4eabda7ac4fb6eaf/transformed/profileinstaller-1.3.1/AndroidManifest.xml:47:25-85
+136            </intent-filter>
+137            <intent-filter>
+137-->[androidx.profileinstaller:profileinstaller:1.3.1] /Users/lekhoa/.gradle/caches/8.9/transforms/9e474b15ca3eb1be4eabda7ac4fb6eaf/transformed/profileinstaller-1.3.1/AndroidManifest.xml:49:13-51:29
+138                <action android:name="androidx.profileinstaller.action.BENCHMARK_OPERATION" />
+138-->[androidx.profileinstaller:profileinstaller:1.3.1] /Users/lekhoa/.gradle/caches/8.9/transforms/9e474b15ca3eb1be4eabda7ac4fb6eaf/transformed/profileinstaller-1.3.1/AndroidManifest.xml:50:17-95
+138-->[androidx.profileinstaller:profileinstaller:1.3.1] /Users/lekhoa/.gradle/caches/8.9/transforms/9e474b15ca3eb1be4eabda7ac4fb6eaf/transformed/profileinstaller-1.3.1/AndroidManifest.xml:50:25-92
+139            </intent-filter>
+140        </receiver>
+141    </application>
+142
+143</manifest>
