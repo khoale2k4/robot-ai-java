@@ -10,7 +10,6 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Toast;
 import android.widget.TextView;
-import android.view.WindowManager;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -57,21 +56,10 @@ public class CameraAIFragment extends Fragment {
     // Định nghĩa các model có sẵn
     private static final String MODEL_SSD_MOBILENET = "ssd_mobilenet_v1_1_metadata_1.tflite";
     private static final String MODEL_MOBILENET_V1 = "mobilenet_v1_1.0_224.tflite";
-    private static final String MODEL_FILE = "model_float32.tflite";
-    private static final String BACKUP_MODEL_FILE = "model_float16_old.tflite";
-    private static final String LABEL_FILE = "labelmap.txt";
-    private static final int TF_OD_API_INPUT_SIZE = 640;
-    private static final boolean TF_OD_API_IS_QUANTIZED = false;
-    private static final String TF_OD_API_IS_MODEL_QUANTIZED = "false";
-    private static final int TF_OD_API_MODEL_FLOAT = 1;
-    private static final int TF_OD_API_MODEL_QUANTIZED = 2;
-    private static final int TF_OD_API_MODEL_BACKUP = 3;
-    private static final String TF_OD_API_MODEL_FILE = "model_float32.tflite";
-    private static final String TF_OD_API_LABELS_FILE = "labelmap.txt";
-    private static final String TF_OD_API_BACKUP_MODEL_FILE = "model_float16_old.tflite";
+    private static final String MODEL_YOLOV10N = "yolov10n_float16_old.tflite";
 
     // Model hiện tại đang sử dụng
-    private String currentModelName = MODEL_FILE;
+    private String currentModelName = MODEL_YOLOV10N;
 
     // Label cần phát hiện
     private static final String TARGET_LABEL = "person";
@@ -118,21 +106,6 @@ public class CameraAIFragment extends Fragment {
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
         Log.d(TAG, "onViewCreated called");
-
-        // Set fullscreen mode
-        if (getActivity() != null) {
-            getActivity().getWindow().setFlags(
-                WindowManager.LayoutParams.FLAG_FULLSCREEN,
-                WindowManager.LayoutParams.FLAG_FULLSCREEN
-            );
-            
-            // Hide navigation bar
-            View decorView = getActivity().getWindow().getDecorView();
-            int uiOptions = View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
-                    | View.SYSTEM_UI_FLAG_FULLSCREEN
-                    | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY;
-            decorView.setSystemUiVisibility(uiOptions);
-        }
 
         // Setup detector after view is created
         setupDetector();
@@ -214,7 +187,7 @@ public class CameraAIFragment extends Fragment {
             cleanupDetectors();
 
             // Thử khởi tạo YOLOv10 trước nếu là YOLOv10 model
-            if (currentModelName.equals(MODEL_FILE)) {
+            if (currentModelName.equals(MODEL_YOLOV10N)) {
                 boolean yoloSuccess = tryInitializeYOLOv10(currentModelName);
                 if (yoloSuccess) {
                     useYOLOv10 = true;
@@ -241,6 +214,8 @@ public class CameraAIFragment extends Fragment {
             }
 
             if (success) {
+                Toast.makeText(getContext(), "SUCCESS",
+                            Toast.LENGTH_LONG).show();
                 isDetectorInitialized = true;
                 Log.i(TAG, "Task Vision detector initialized successfully");
             } else {
@@ -356,7 +331,7 @@ public class CameraAIFragment extends Fragment {
             int maxResults;
             float scoreThreshold;
 
-            if (modelName.equals(MODEL_FILE)) {
+            if (modelName.equals(MODEL_YOLOV10N)) {
                 // Cài đặt tối ưu cho YOLOv10n
                 maxResults = 10;
                 scoreThreshold = 0.3f; // YOLOv10 thường chính xác hơn, có thể dùng ngưỡng thấp hơn
@@ -757,51 +732,6 @@ public class CameraAIFragment extends Fragment {
             }
         } catch (Exception e) {
             Log.e(TAG, "Error shutting down cameraExecutor", e);
-        }
-    }
-
-    private void initModel() {
-        try {
-            // Load main model (float32)
-            detector = TFLiteObjectDetectionAPIModel.create(
-                    getActivity(),
-                    TF_OD_API_MODEL_FILE,
-                    TF_OD_API_LABELS_FILE,
-                    TF_OD_API_INPUT_SIZE,
-                    TF_OD_API_IS_QUANTIZED,
-                    TF_OD_API_MODEL_FLOAT);
-
-            // Load backup model (float16_old)
-            backupDetector = TFLiteObjectDetectionAPIModel.create(
-                    getActivity(),
-                    TF_OD_API_BACKUP_MODEL_FILE,
-                    TF_OD_API_LABELS_FILE,
-                    TF_OD_API_INPUT_SIZE,
-                    TF_OD_API_IS_QUANTIZED,
-                    TF_OD_API_MODEL_BACKUP);
-
-            Log.d(TAG, "Models loaded successfully");
-        } catch (final IOException e) {
-            e.printStackTrace();
-            Log.e(TAG, "Exception initializing detector!", e);
-            Toast.makeText(
-                    getContext(),
-                    "Detector could not be initialized",
-                    Toast.LENGTH_SHORT)
-                    .show();
-        }
-    }
-
-    private void switchToBackupModel() {
-        try {
-            if (backupDetector != null) {
-                detector = backupDetector;
-                Log.d(TAG, "Switched to backup model successfully");
-            } else {
-                Log.e(TAG, "Backup model not initialized");
-            }
-        } catch (Exception e) {
-            Log.e(TAG, "Error switching to backup model", e);
         }
     }
 }
