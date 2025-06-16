@@ -57,4 +57,6 @@ dependencies {
     implementation("org.tensorflow:tensorflow-lite-gpu:2.15.0")
     implementation("org.tensorflow:tensorflow-lite-support:0.4.4")
     implementation("org.tensorflow:tensorflow-lite-task-vision:0.4.4")
+
+    implementation("com.google.code.gson:gson:2.10.1")
 }

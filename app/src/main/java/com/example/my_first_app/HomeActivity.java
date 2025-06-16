@@ -54,9 +54,9 @@ public class HomeActivity extends AppCompatActivity {
             } else if (itemId == R.id.nav_camera_ai) {
                 selectedFragment = new CameraAIFragment();
             } 
-            // else if (itemId == R.id.nav_settings) {
-            //     selectedFragment = new SettingsFragment();
-            // }
+            else if (itemId == R.id.nav_map) {
+                selectedFragment = new MapFragment();
+            }
             
             if (selectedFragment != null) {
                 loadFragment(selectedFragment);

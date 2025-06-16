@@ -1,0 +1,5 @@
+{
+  "obstacles": [{"x": 10, "y": 20}],
+  "robot": {"x": 50, "y": 50},
+  "destination": {"x": 90, "y": 90}
+}
