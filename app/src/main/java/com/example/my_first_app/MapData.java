@@ -7,5 +7,6 @@ public class MapData {
     public List<PointF> obstacles;
     public PointF robot;
     public PointF destination;
+    public List<Wall> walls;
 }
 

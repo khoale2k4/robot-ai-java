@@ -14,7 +14,7 @@ import java.util.List;
 
 public class CustomMapView extends View {
 
-    private Paint robotPaint, destPaint, obstaclePaint;
+    private Paint robotPaint, destPaint, obstaclePaint, wallPaint;
     private MapData mapData;
 
     public CustomMapView(Context context, AttributeSet attrs) {
@@ -34,6 +34,10 @@ public class CustomMapView extends View {
         obstaclePaint = new Paint();
         obstaclePaint.setColor(Color.BLACK);
         obstaclePaint.setStyle(Paint.Style.FILL);
+
+        wallPaint = new Paint();
+        wallPaint.setColor(Color.GRAY);
+        wallPaint.setStrokeWidth(24f);
     }
 
     public void setMapData(MapData mapData) {
@@ -45,7 +49,8 @@ public class CustomMapView extends View {
     protected void onDraw(Canvas canvas) {
         super.onDraw(canvas);
 
-        if (mapData == null) return;
+        if (mapData == null)
+            return;
 
         int width = getWidth();
         int height = getHeight();
@@ -61,6 +66,16 @@ public class CustomMapView extends View {
         if (mapData.destination != null) {
             canvas.drawCircle(mapData.destination.x / 100 * width, mapData.destination.y / 100 * height, 12, destPaint);
         }
+
+        if (mapData.walls != null) {
+            for (Wall wall : mapData.walls) {
+                float startX = wall.start.x / 100 * width;
+                float startY = wall.start.y / 100 * height;
+                float endX = wall.end.x / 100 * width;
+                float endY = wall.end.y / 100 * height;
+
+                canvas.drawLine(startX, startY, endX, endY, wallPaint);
+            }
+        }
     }
 }
-

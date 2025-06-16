@@ -96,7 +96,8 @@ public class MapFragment extends Fragment {
 
         // Khởi động Camera
         startCamera();
-        loadMapData("map_1.json");
+        Toast.makeText(getContext(), "Khởi tạo bản đồ", Toast.LENGTH_SHORT).show();
+        customMapView.setMapData(loadMapData("map_1.json"));
 
         // Tương tác bản đồ
         customMapView.setOnTouchListener((v, event) -> {

@@ -19,16 +19,6 @@
         app:layout_constraintEnd_toEndOf="parent" />
 
     <!-- Map hiển thị dưới PreviewView -->
-    <com.example.my_first_app.CustomMapView
-        android:id="@+id/customMapView"
-        android:layout_width="0dp"
-        android:layout_height="0dp"
-        android:layout_marginTop="8dp"
-        android:layout_marginBottom="8dp"
-        app:layout_constraintTop_toBottomOf="@id/previewView"
-        app:layout_constraintBottom_toTopOf="@id/map_button_container"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent" />
     <ImageView
         android:id="@+id/mapView"
         android:layout_width="0dp"
@@ -38,6 +28,16 @@
         android:src="@drawable/map_background"
         app:layout_constraintTop_toBottomOf="@id/previewView"
         app:layout_constraintBottom_toTopOf="@+id/map_button_container"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
+    <com.example.my_first_app.CustomMapView
+        android:id="@+id/customMapView"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:layout_marginTop="8dp"
+        android:layout_marginBottom="8dp"
+        app:layout_constraintTop_toBottomOf="@id/previewView"
+        app:layout_constraintBottom_toTopOf="@id/map_button_container"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent" />
 
