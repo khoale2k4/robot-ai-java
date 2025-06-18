@@ -560,6 +560,19 @@ public class CameraAIFragment extends Fragment {
         }
     }
 
+    private List<Detection> filterDetectionsByLabel(List<Detection> detections, String label) {
+        List<Detection> filteredResults = new ArrayList<>();
+        for (Detection detection : detections) {
+            if (!detection.getCategories().isEmpty()) {
+                String detectedLabel = detection.getCategories().get(0).getLabel().toLowerCase();
+                if (detectedLabel.equals(label)) {
+                    filteredResults.add(detection);
+                }
+            }
+        }
+        return filteredResults;
+    }
+
     private void setupScanButton(View view) {
         scanButton = view.findViewById(R.id.scanButton);
         scanButton.setOnClickListener(v -> {
@@ -586,7 +599,7 @@ public class CameraAIFragment extends Fragment {
 
     private void sendRobotCommand(String command) {
         if (isRobotConnected && robotCommunication != null) {
-            if (command.equals("ST") || isScanning) {
+            if (isScanning) {
                 Log.d(TAG, "Sending command: " + command);
                 robotCommunication.sendRobotCommand(command);
             } else {
@@ -595,19 +608,6 @@ public class CameraAIFragment extends Fragment {
         } else {
             Log.d(TAG, "Cannot send command: " + command + " - Robot not connected");
         }
-    }
-
-    private List<Detection> filterDetectionsByLabel(List<Detection> detections, String label) {
-        List<Detection> filteredResults = new ArrayList<>();
-        for (Detection detection : detections) {
-            if (!detection.getCategories().isEmpty()) {
-                String detectedLabel = detection.getCategories().get(0).getLabel().toLowerCase();
-                if (detectedLabel.equals(label)) {
-                    filteredResults.add(detection);
-                }
-            }
-        }
-        return filteredResults;
     }
 
     // @Override

@@ -24,6 +24,6 @@ public class Config {
 
     // Tốc độ tối đa và tối thiểu
     public static final float MAX_LINEAR     = 1.0f;
-    public static final float MAX_ANGULAR    = 0.5f;
+    public static final float MAX_ANGULAR    = 10f;
     public static final float MIN_LINEAR     = 0.2f;
 }

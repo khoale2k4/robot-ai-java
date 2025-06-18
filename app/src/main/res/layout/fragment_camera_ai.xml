@@ -19,7 +19,7 @@
         android:layout_height="match_parent" />
 
     <!-- AI Detection Info -->
-    <TextView
+    <!-- <TextView
         android:id="@+id/aiInfoText"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
@@ -31,7 +31,7 @@
         android:padding="8dp"
         android:visibility="visible"
         app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintStart_toStartOf="parent" />
+        app:layout_constraintStart_toStartOf="parent" /> -->
         
     <!-- No Robot Warning -->
     <TextView

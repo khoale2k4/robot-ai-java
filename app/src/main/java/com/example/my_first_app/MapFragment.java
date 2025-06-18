@@ -7,6 +7,8 @@ import android.content.pm.PackageManager;
 import android.graphics.PointF;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.provider.OpenableColumns;
 import android.util.Log;
 import android.graphics.Bitmap;
@@ -42,7 +44,8 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.Executors; 
+import java.util.Map;
+import java.util.concurrent.Executors;
 
 import org.tensorflow.lite.task.vision.detector.Detection;
 import org.tensorflow.lite.task.vision.detector.ObjectDetector;
@@ -69,6 +72,9 @@ public class MapFragment extends Fragment {
     private boolean isCameraStarted = false;
     private boolean isFragmentActive = false;
     private MapData mapData;
+    private List<PointF> currentPath;
+    private final Handler simulationHandler = new Handler(Looper.getMainLooper());
+    private Runnable simulationRunnable;
 
     private ObjectDetector objectDetector;
     private YOLOv10Detector yoloDetector;
@@ -114,12 +120,6 @@ public class MapFragment extends Fragment {
         btnCancelDestination = view.findViewById(R.id.btnCancelDestination);
         overlayView = view.findViewById(R.id.overlayViewObjectOnly);
         btnCancelDestination.setVisibility(View.VISIBLE);
-        btnCancelDestination.setOnClickListener(v -> {
-            if (mapData != null) {
-                mapData.destination = null;
-                customMapView.setMapData(mapData);
-            }
-        });
         cameraExecutor = Executors.newSingleThreadExecutor();
 
         // Khởi động Camera
@@ -131,19 +131,45 @@ public class MapFragment extends Fragment {
                 Toast.makeText(getContext(), "Camera permission required", Toast.LENGTH_LONG).show();
             }
         }
-        Toast.makeText(getContext(), "Khởi tạo bản đồ", Toast.LENGTH_SHORT).show();
-        customMapView.setMapData(loadMapData("map_1.json"));
+        // Toast.makeText(getContext(), "Khởi tạo bản đồ", Toast.LENGTH_SHORT).show();
+
+        mapData = new MapData();
+        mapData.obstacles = new ArrayList<>();
+        mapData.robot = new PointF(50, 50);
+        mapData.robotAngle = 90;
+        mapData.walls = new ArrayList<>();
+        customMapView.setMapData(mapData);
 
         // Tương tác bản đồ
         customMapView.setOnTouchListener((v, event) -> {
             if (event.getAction() == MotionEvent.ACTION_DOWN) {
+                currentPath = null;
                 PointF point = convertTouchToMapCoordinates(event.getX(), event.getY(), customMapView);
+                if (mapData != null) {
+                    mapData.destination = point;
+                    customMapView.setMapData(mapData);
+                    new Thread(() -> {
+                        final List<PointF> path = mapData.findPathToDestination();
+                        if (getActivity() != null) {
+                            getActivity().runOnUiThread(() -> {
+                                currentPath = path;
+                                executePathLoop();
+                            });
+                        }
+                    }).start();
+                }
                 sendRobotTo(point);
                 return true;
             }
             return false;
         });
-
+        btnCancelDestination.setOnClickListener(v -> {
+            if (mapData != null) {
+                mapData.destination = null;
+                currentPath = null;
+                customMapView.setMapData(mapData);
+            }
+        });
         btnLoadMap.setOnClickListener(v -> openMapFilePicker());
         btnSaveMap.setOnClickListener(v -> {
             Toast.makeText(getContext(), "Đã lưu bản đồ!", Toast.LENGTH_SHORT).show();
@@ -378,7 +404,7 @@ public class MapFragment extends Fragment {
                         .build();
 
                 imageAnalyzer.setAnalyzer(cameraExecutor, image -> {
-                    Log.i(TAG, "Đang phân tích");
+                    // Log.i(TAG, "Đang phân tích");
                     // Check if fragment is still active and detector is available
                     if (!isFragmentActive || !isAdded() || getActivity() == null || getActivity().isFinishing()) {
                         image.close();
@@ -396,7 +422,7 @@ public class MapFragment extends Fragment {
                         Bitmap bitmap = image.toBitmap();
 
                         if (bitmap != null) {
-                            Log.i(TAG, "Tìm thấy gì đó");
+                            // Log.i(TAG, "Tìm thấy gì đó");
                             final List<Detection> results;
 
                             // if (useYOLOv10) {
@@ -450,7 +476,7 @@ public class MapFragment extends Fragment {
                                 results = taskResults;
                             }
 
-                            Log.d(TAG, "SỐ LƯỢNG VẬT THỂ PHÁT HIỆN ĐƯỢC: " + results.size());
+                            // Log.d(TAG, "SỐ LƯỢNG VẬT THỂ PHÁT HIỆN ĐƯỢC: " + results.size());
 
                             // Cập nhật giao diện trên luồng UI
                             if (isFragmentActive && isAdded() && getActivity() != null && !getActivity().isFinishing()
@@ -544,7 +570,7 @@ public class MapFragment extends Fragment {
 
     private void sendRobotTo(PointF point) {
         String msg = String.format("Robot đến: (%.1f, %.1f)", point.x, point.y);
-        Toast.makeText(getContext(), msg, Toast.LENGTH_SHORT).show();
+        // Toast.makeText(getContext(), msg, Toast.LENGTH_SHORT).show();
     }
 
     private PointF convertTouchToMapCoordinates(float x, float y, View view) {
@@ -611,5 +637,42 @@ public class MapFragment extends Fragment {
             Log.e(TAG, "Error checking camera permissions", e);
             return false;
         }
+    }
+
+    private void executePathLoop() {
+        // Hàm này không cần thay đổi
+        simulationRunnable = new Runnable() {
+            @Override
+            public void run() {
+                // Toast.makeText(getContext(), "RobotControl, Đang chạy hàm run", Toast.LENGTH_SHORT).show();
+                if (currentPath == null || currentPath.isEmpty()) {
+                    Log.d("RobotControl", "Đã đến đích!");
+                    return;
+                }
+                String command = mapData.getNextCommand(currentPath);
+                if (command != null) {
+                    Log.d("RobotControl", command);
+                    Log.d("Robot position", 
+    "x: " + mapData.robot.x +
+    ", y: " + mapData.robot.y +
+    ", angle: " + mapData.robotAngle);
+
+                    mapData.executeCommand(command);
+                    customMapView.setMapData(mapData);
+                    sendCommandAndWait(command);
+                } else {
+                    Log.d("RobotControl", "Hoàn thành đường đi.");
+                }
+            }
+        };
+        simulationHandler.post(simulationRunnable);
+    }
+
+    private void sendCommandAndWait(String command) {
+        // Log.d("RobotControl", "Gửi lệnh: " + command);
+        // sendCommandToRealRobot(command); // Hàm gửi lệnh thật của bạn
+
+        // GIẢ LẬP CHỜ KẾT QUẢ: Sau 0.5 giây, gọi lại vòng lặp để lấy lệnh tiếp theo
+        simulationHandler.postDelayed(simulationRunnable, 1000);
     }
 }

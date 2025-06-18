@@ -14,7 +14,7 @@ import java.util.List;
 
 public class CustomMapView extends View {
 
-    private Paint robotPaint, destPaint, obstaclePaint, wallPaint;
+    private Paint robotPaint, destPaint, obstaclePaint, wallPaint, robotOrientationPaint;
     private MapData mapData;
 
     public CustomMapView(Context context, AttributeSet attrs) {
@@ -23,9 +23,13 @@ public class CustomMapView extends View {
     }
 
     private void initPaints() {
-        robotPaint = new Paint();
+        robotPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
         robotPaint.setColor(Color.BLUE);
         robotPaint.setStyle(Paint.Style.FILL);
+
+        robotOrientationPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        robotOrientationPaint.setColor(Color.WHITE);
+        robotOrientationPaint.setStrokeWidth(8f);
 
         destPaint = new Paint();
         destPaint.setColor(Color.RED);
@@ -60,7 +64,18 @@ public class CustomMapView extends View {
         }
 
         if (mapData.robot != null) {
-            canvas.drawCircle(mapData.robot.x / 100 * width, mapData.robot.y / 100 * height, 12, robotPaint);
+            float scaleX = width / 100f;
+            float scaleY = height / 100f;
+            PointF robotPos = new PointF(mapData.robot.x * scaleX, mapData.robot.y * scaleY);
+
+            canvas.drawCircle(robotPos.x, robotPos.y, 12, robotPaint);
+            float angleRad = (float) Math.toRadians(mapData.robotAngle);
+            float lineLength = 12 * 1.5f;
+
+            float endX = robotPos.x + lineLength * (float) Math.cos(angleRad);
+            float endY = robotPos.y - lineLength * (float) Math.sin(angleRad);
+
+            canvas.drawLine(robotPos.x, robotPos.y, endX, endY, robotOrientationPaint);
         }
 
         if (mapData.destination != null) {

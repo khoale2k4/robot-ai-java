@@ -191,13 +191,13 @@ public class OverlayView extends View {
             Category category = detection.getCategories().get(0);
             RectF box = detection.getBoundingBox();
             int[] bbox = {
-                    (int) (box.left),
-                    (int) (box.top),
+                    (int) box.left,
+                    (int) box.top,
                     (int) (box.right - box.left),
                     (int) (box.bottom - box.top)
             };
 
-            if (category.getLabel().toLowerCase().equals("person")) {
+            if ("person".equalsIgnoreCase(category.getLabel())) {
                 if (category.getScore() > bestConfidence) {
                     bestPerson = detection;
                     bestConfidence = category.getScore();
@@ -214,8 +214,8 @@ public class OverlayView extends View {
 
         RectF personBox = bestPerson.getBoundingBox();
         int[] bboxPerson = {
-                (int) (personBox.left),
-                (int) (personBox.top),
+                (int) personBox.left,
+                (int) personBox.top,
                 (int) (personBox.right - personBox.left),
                 (int) (personBox.bottom - personBox.top)
         };
@@ -225,9 +225,20 @@ public class OverlayView extends View {
         float angular = control[1];
 
         String movement;
+        String turn;
         String command;
 
-        if (Math.abs(linear) < 0.05f) {
+        // Phân tích góc quay
+        if (angular < -0.4f) {
+            turn = "XOAY TRÁI";
+        } else if (angular > 0.4f) {
+            turn = "XOAY PHẢI";
+        } else {
+            turn = "KHÔNG XOAY";
+        }
+
+        // Phân tích chuyển động thẳng
+        if (linear < 0.2f && linear >= -0.2f) {
             movement = "DỪNG";
             command = Instruction.STOP;
         } else if (linear > 0) {
@@ -238,21 +249,17 @@ public class OverlayView extends View {
             command = Instruction.getCommand(Instruction.BACKWARD, Math.abs(linear));
         }
 
-        String turn;
-        if (angular < -0.1f) {
-            turn = "XOAY TRÁI";
-            command = Instruction.getCommand(Instruction.TURN_LEFT, Math.abs(angular));
-        } else if (angular > 0.1f) {
-            turn = "XOAY PHẢI";
-            command = Instruction.getCommand(Instruction.TURN_RIGHT, Math.abs(angular));
-        } else {
-            turn = "ĐI THẲNG";
+        // Ưu tiên xoay nếu cần xoay mạnh
+        if (Math.abs(angular) > 0.5f) {
+            command = Instruction.getCommand(
+                    angular > 0 ? Instruction.TURN_RIGHT : Instruction.TURN_LEFT,
+                    Math.abs(angular));
         }
 
         String distance = estimateDistance(bboxPerson[2], bboxPerson[3]);
         String speedInfo = String.format(" | Tốc độ: %.2f | Góc: %.2f", linear, angular);
 
-        return new Pair<>(movement + " - " + turn + " | " + distance + speedInfo, command);
+        return new Pair<>((turn == "KHÔNG XOAY" ? movement : turn) + speedInfo, command);
     }
 
     private String estimateDistance(float personWidth, float personHeight) {
