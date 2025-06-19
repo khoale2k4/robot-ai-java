@@ -73,11 +73,13 @@ public class OverlayView extends View {
             lastCommandTime = currentTime;
             Log.d("OverlayView", "New command issued: " + commandWithSpeed);
         } else {
-            Log.d("OverlayView", "Same command within interval, skip sending: " + commandWithSpeed);
+            callBackCommand = "TR";
         }
 
-        invalidate(); // vẽ lại giao diện
-        return callBackCommand; // trả về ví dụ: "TL:0.30"
+        Log.d("OverlayView", "Command: " + callBackCommand);
+        invalidate(); // Vẽ lại giao diện
+
+        return callBackCommand; // Trả về lệnh ngay sau khi set
     }
 
     @Override

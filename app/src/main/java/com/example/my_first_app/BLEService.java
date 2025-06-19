@@ -49,27 +49,36 @@ public class BLEService implements RobotCommunicationInterface {
     private BluetoothGatt bluetoothGatt;
     private BluetoothGattCharacteristic txCharacteristic;
     private BluetoothGattCharacteristic rxCharacteristic;
-    
+
     private Context context;
     private Handler mainHandler;
     private boolean scanning = false;
     private boolean isConnected = false;
-    
+
     // Command queue for BLE writes
     private final Queue<String> commandQueue = new LinkedList<>();
     private boolean isWriting = false;
     private long lastWriteTime = 0;
-    
+    private String lastOrder = "";
+
     private BLEConnectionListener connectionListener;
     private CommunicationListener communicationListener;
     private List<BluetoothDevice> discoveredDevices = new ArrayList<>();
 
+    private static final long MIN_COMMAND_INTERVAL_MS = 200; // hoặc 500ms tuỳ nhu cầu
+    private long lastCommandTimestamp = 0;
+
     public interface BLEConnectionListener {
         void onDeviceFound(BluetoothDevice device);
+
         void onDeviceConnected(BluetoothDevice device);
+
         void onDeviceDisconnected();
+
         void onConnectionFailed(String error);
+
         void onScanStarted();
+
         void onScanStopped();
     }
 
@@ -80,7 +89,8 @@ public class BLEService implements RobotCommunicationInterface {
     }
 
     private void initializeBluetooth() {
-        final BluetoothManager bluetoothManager = (BluetoothManager) context.getSystemService(Context.BLUETOOTH_SERVICE);
+        final BluetoothManager bluetoothManager = (BluetoothManager) context
+                .getSystemService(Context.BLUETOOTH_SERVICE);
         if (bluetoothManager != null) {
             bluetoothAdapter = bluetoothManager.getAdapter();
         }
@@ -105,10 +115,13 @@ public class BLEService implements RobotCommunicationInterface {
 
     public boolean hasRequiredPermissions() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            return ContextCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_SCAN) == PackageManager.PERMISSION_GRANTED &&
-                   ContextCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED;
+            return ContextCompat.checkSelfPermission(context,
+                    Manifest.permission.BLUETOOTH_SCAN) == PackageManager.PERMISSION_GRANTED &&
+                    ContextCompat.checkSelfPermission(context,
+                            Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED;
         } else {
-            return ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED;
+            return ContextCompat.checkSelfPermission(context,
+                    Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED;
         }
     }
 
@@ -120,7 +133,8 @@ public class BLEService implements RobotCommunicationInterface {
             return;
         }
 
-        if (scanning) return;
+        if (scanning)
+            return;
 
         discoveredDevices.clear();
         bluetoothLeScanner = bluetoothAdapter.getBluetoothLeScanner();
@@ -130,7 +144,8 @@ public class BLEService implements RobotCommunicationInterface {
                 .build();
 
         mainHandler.postDelayed(() -> {
-            if (scanning) stopScan();
+            if (scanning)
+                stopScan();
         }, SCAN_PERIOD);
 
         scanning = true;
@@ -143,17 +158,19 @@ public class BLEService implements RobotCommunicationInterface {
     }
 
     public void stopScan() {
-        if (!scanning || bluetoothLeScanner == null) return;
-        
-        if (!hasRequiredPermissions()) return;
+        if (!scanning || bluetoothLeScanner == null)
+            return;
+
+        if (!hasRequiredPermissions())
+            return;
 
         scanning = false;
         bluetoothLeScanner.stopScan(leScanCallback);
-        
+
         if (connectionListener != null) {
             connectionListener.onScanStopped();
         }
-        
+
         Log.d(TAG, "Dừng quét BLE");
     }
 
@@ -162,7 +179,8 @@ public class BLEService implements RobotCommunicationInterface {
         public void onScanResult(int callbackType, ScanResult result) {
             super.onScanResult(callbackType, result);
             BluetoothDevice device = result.getDevice();
-            if (device == null) return;
+            if (device == null)
+                return;
 
             // Check permissions before accessing device info
             if (!hasRequiredPermissions()) {
@@ -172,7 +190,7 @@ public class BLEService implements RobotCommunicationInterface {
 
             String deviceAddress = null;
             String deviceName = null;
-            
+
             try {
                 deviceAddress = device.getAddress();
                 deviceName = device.getName();
@@ -183,12 +201,12 @@ public class BLEService implements RobotCommunicationInterface {
                 Log.w(TAG, "Exception accessing device info", e);
                 return;
             }
-            
+
             if (deviceAddress == null) {
                 Log.w(TAG, "Device address is null");
                 return;
             }
-            
+
             Log.d(TAG, "Phát hiện thiết bị: " + deviceAddress + ", RSSI: " + result.getRssi());
             Log.d(TAG, "Device name: " + (deviceName != null ? deviceName : "null"));
 
@@ -200,7 +218,8 @@ public class BLEService implements RobotCommunicationInterface {
                     if (connectionListener != null) {
                         connectionListener.onDeviceFound(device);
                     }
-                    Log.d(TAG, "Thêm thiết bị: " + (deviceName != null ? deviceName : "Unknown") + " (" + deviceAddress + "), RSSI: " + result.getRssi());
+                    Log.d(TAG, "Thêm thiết bị: " + (deviceName != null ? deviceName : "Unknown") + " (" + deviceAddress
+                            + "), RSSI: " + result.getRssi());
                 } else {
                     Log.d(TAG, "Skipping weak signal device: " + deviceAddress + ", RSSI: " + result.getRssi());
                 }
@@ -227,7 +246,7 @@ public class BLEService implements RobotCommunicationInterface {
                     break;
             }
             Log.e(TAG, "Scan failed reason: " + errorMessage);
-            
+
             if (connectionListener != null) {
                 connectionListener.onConnectionFailed("Lỗi quét BLE: " + errorMessage);
             }
@@ -242,9 +261,9 @@ public class BLEService implements RobotCommunicationInterface {
             }
             return;
         }
-        
+
         stopScan();
-        
+
         if (!hasRequiredPermissions()) {
             Log.e(TAG, "Missing required permissions");
             if (connectionListener != null) {
@@ -270,12 +289,12 @@ public class BLEService implements RobotCommunicationInterface {
         try {
             String deviceAddress = device.getAddress();
             Log.d(TAG, "Đang kết nối tới " + deviceAddress);
-            
+
             // Reset connection state
             isConnected = false;
-            
+
             bluetoothGatt = device.connectGatt(context, false, gattCallback);
-            
+
             if (bluetoothGatt == null) {
                 Log.e(TAG, "Failed to create GATT connection");
                 if (connectionListener != null) {
@@ -299,12 +318,12 @@ public class BLEService implements RobotCommunicationInterface {
         @Override
         public void onConnectionStateChange(BluetoothGatt gatt, int status, int newState) {
             Log.d(TAG, "onConnectionStateChange: status=" + status + ", newState=" + newState);
-            
+
             if (gatt == null) {
                 Log.e(TAG, "GATT is null in onConnectionStateChange");
                 return;
             }
-            
+
             try {
                 if (!hasRequiredPermissions()) {
                     Log.e(TAG, "No permissions in onConnectionStateChange");
@@ -315,14 +334,14 @@ public class BLEService implements RobotCommunicationInterface {
                     if (status == BluetoothGatt.GATT_SUCCESS) {
                         Log.d(TAG, "Đã kết nối tới GATT server, discovering services...");
                         isConnected = true;
-                        
+
                         // Add small delay before service discovery
                         mainHandler.postDelayed(() -> {
                             try {
                                 if (gatt != null && isConnected) {
                                     boolean discoverResult = gatt.discoverServices();
                                     Log.d(TAG, "discoverServices() result: " + discoverResult);
-                                    
+
                                     if (!discoverResult) {
                                         Log.e(TAG, "Failed to start service discovery");
                                         mainHandler.post(() -> {
@@ -338,12 +357,13 @@ public class BLEService implements RobotCommunicationInterface {
                                 Log.e(TAG, "Exception during service discovery", e);
                                 mainHandler.post(() -> {
                                     if (connectionListener != null) {
-                                        connectionListener.onConnectionFailed("Lỗi khám phá dịch vụ: " + e.getMessage());
+                                        connectionListener
+                                                .onConnectionFailed("Lỗi khám phá dịch vụ: " + e.getMessage());
                                     }
                                 });
                             }
                         }, 100); // 100ms delay
-                        
+
                     } else {
                         Log.e(TAG, "Connection failed with status: " + status);
                         isConnected = false;
@@ -382,7 +402,7 @@ public class BLEService implements RobotCommunicationInterface {
         @Override
         public void onServicesDiscovered(BluetoothGatt gatt, int status) {
             Log.d(TAG, "onServicesDiscovered: status=" + status);
-            
+
             if (gatt == null) {
                 Log.e(TAG, "GATT is null in onServicesDiscovered");
                 mainHandler.post(() -> {
@@ -392,7 +412,7 @@ public class BLEService implements RobotCommunicationInterface {
                 });
                 return;
             }
-            
+
             try {
                 if (status == BluetoothGatt.GATT_SUCCESS) {
                     // List all available services
@@ -408,7 +428,7 @@ public class BLEService implements RobotCommunicationInterface {
                         });
                         return;
                     }
-                    
+
                     if (services == null || services.isEmpty()) {
                         Log.e(TAG, "No services found");
                         mainHandler.post(() -> {
@@ -418,43 +438,43 @@ public class BLEService implements RobotCommunicationInterface {
                         });
                         return;
                     }
-                    
+
                     for (BluetoothGattService service : services) {
                         if (service != null && service.getUuid() != null) {
                             Log.d(TAG, "Found service: " + service.getUuid().toString());
                         }
                     }
-                    
+
                     BluetoothGattService service = gatt.getService(UART_SERVICE_UUID);
                     if (service != null) {
                         Log.d(TAG, "Found UART service!");
-                        
+
                         // List all characteristics in UART service
                         List<BluetoothGattCharacteristic> characteristics = service.getCharacteristics();
                         if (characteristics != null) {
                             for (BluetoothGattCharacteristic characteristic : characteristics) {
                                 if (characteristic != null && characteristic.getUuid() != null) {
-                                    Log.d(TAG, "Found characteristic: " + characteristic.getUuid().toString() + 
-                                          ", properties: " + characteristic.getProperties());
+                                    Log.d(TAG, "Found characteristic: " + characteristic.getUuid().toString() +
+                                            ", properties: " + characteristic.getProperties());
                                 }
                             }
                         }
-                        
+
                         txCharacteristic = service.getCharacteristic(TX_CHARACTERISTIC_UUID);
                         rxCharacteristic = service.getCharacteristic(RX_CHARACTERISTIC_UUID);
-                        
+
                         Log.d(TAG, "TX Characteristic: " + (txCharacteristic != null));
                         Log.d(TAG, "RX Characteristic: " + (rxCharacteristic != null));
-                        
+
                         if (txCharacteristic != null && rxCharacteristic != null) {
                             Log.d(TAG, "Both characteristics found, enabling notifications...");
-                            
+
                             // Add delay before enabling notifications
                             mainHandler.postDelayed(() -> {
                                 try {
                                     if (gatt != null && rxCharacteristic != null && isConnected) {
                                         enableRxNotifications(gatt);
-                                        
+
                                         mainHandler.post(() -> {
                                             if (connectionListener != null) {
                                                 connectionListener.onDeviceConnected(gatt.getDevice());
@@ -465,15 +485,16 @@ public class BLEService implements RobotCommunicationInterface {
                                     Log.e(TAG, "Error enabling notifications", e);
                                     mainHandler.post(() -> {
                                         if (connectionListener != null) {
-                                            connectionListener.onConnectionFailed("Lỗi bật thông báo: " + e.getMessage());
+                                            connectionListener
+                                                    .onConnectionFailed("Lỗi bật thông báo: " + e.getMessage());
                                         }
                                     });
                                 }
                             }, 100);
-                            
+
                         } else {
-                            Log.e(TAG, "Không tìm thấy characteristic UART - TX: " + (txCharacteristic != null) + 
-                                  ", RX: " + (rxCharacteristic != null));
+                            Log.e(TAG, "Không tìm thấy characteristic UART - TX: " + (txCharacteristic != null) +
+                                    ", RX: " + (rxCharacteristic != null));
                             mainHandler.post(() -> {
                                 if (connectionListener != null) {
                                     connectionListener.onConnectionFailed("Không tìm thấy UART characteristics");
@@ -515,10 +536,10 @@ public class BLEService implements RobotCommunicationInterface {
         @Override
         public void onCharacteristicWrite(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic, int status) {
             super.onCharacteristicWrite(gatt, characteristic, status);
-            
+
             // Always reset writing state
             isWriting = false;
-            
+
             if (status == BluetoothGatt.GATT_SUCCESS) {
                 Log.d(TAG, "Đã gửi dữ liệu thành công");
             } else {
@@ -529,7 +550,7 @@ public class BLEService implements RobotCommunicationInterface {
                     }
                 });
             }
-            
+
             // Process next command in queue after a small delay
             mainHandler.postDelayed(() -> processCommandQueue(), WRITE_DELAY_MS);
         }
@@ -551,7 +572,8 @@ public class BLEService implements RobotCommunicationInterface {
     };
 
     private void enableRxNotifications(BluetoothGatt gatt) {
-        if (!hasRequiredPermissions() || rxCharacteristic == null) return;
+        if (!hasRequiredPermissions() || rxCharacteristic == null)
+            return;
 
         gatt.setCharacteristicNotification(rxCharacteristic, true);
         BluetoothGattDescriptor descriptor = rxCharacteristic.getDescriptor(CCCD_UUID);
@@ -567,8 +589,8 @@ public class BLEService implements RobotCommunicationInterface {
     @Override
     public void sendData(String data) {
         if (bluetoothGatt == null || txCharacteristic == null || !isConnected) {
-            Log.e(TAG, "Chưa kết nối với thiết bị - bluetoothGatt: " + (bluetoothGatt != null) + 
-                  ", txCharacteristic: " + (txCharacteristic != null) + ", isConnected: " + isConnected);
+            Log.e(TAG, "Chưa kết nối với thiết bị - bluetoothGatt: " + (bluetoothGatt != null) +
+                    ", txCharacteristic: " + (txCharacteristic != null) + ", isConnected: " + isConnected);
             if (communicationListener != null) {
                 communicationListener.onCommunicationError("Chưa kết nối với thiết bị");
             }
@@ -583,38 +605,52 @@ public class BLEService implements RobotCommunicationInterface {
             return;
         }
 
+        if(lastOrder.equals(data)) {
+            Log.w(TAG, "Lệnh trùng lặp: " + data);
+            return; // Không gửi lệnh trùng lặp
+        }
+        lastOrder = data;
+
+        long now = System.currentTimeMillis();
+        if (now - lastCommandTimestamp < MIN_COMMAND_INTERVAL_MS && !data.contains("ST")) {
+            Log.w(TAG, "Huỷ lệnh vì gửi quá nhanh: " + data);
+            return; // Không gửi nếu chưa đủ khoảng cách thời gian
+        }
+
+        lastCommandTimestamp = now;
+
         // Add to queue
         synchronized (commandQueue) {
             commandQueue.offer(data);
             Log.d(TAG, "Added to queue: " + data + " (queue size: " + commandQueue.size() + ")");
         }
-        
+
         // Process queue
         processCommandQueue();
     }
-    
+
     private void processCommandQueue() {
         if (isWriting) {
             Log.d(TAG, "Still writing, waiting...");
             return;
         }
-        
+
         synchronized (commandQueue) {
             if (commandQueue.isEmpty()) {
                 return;
             }
-            
+
             // Check if enough time has passed since last write
             long currentTime = System.currentTimeMillis();
             long timeSinceLastWrite = currentTime - lastWriteTime;
-            
+
             if (timeSinceLastWrite < WRITE_DELAY_MS) {
                 long delayNeeded = WRITE_DELAY_MS - timeSinceLastWrite;
                 Log.d(TAG, "Delaying next write by " + delayNeeded + "ms");
                 mainHandler.postDelayed(this::processCommandQueue, delayNeeded);
                 return;
             }
-            
+
             String data = commandQueue.poll();
             if (data != null) {
                 isWriting = true;
@@ -622,11 +658,11 @@ public class BLEService implements RobotCommunicationInterface {
             }
         }
     }
-    
+
     private void sendDataImmediate(String data) {
         if (bluetoothGatt == null || txCharacteristic == null || !isConnected) {
-            Log.e(TAG, "Cannot send data - bluetoothGatt: " + (bluetoothGatt != null) + 
-                  ", txCharacteristic: " + (txCharacteristic != null) + ", isConnected: " + isConnected);
+            Log.e(TAG, "Cannot send data - bluetoothGatt: " + (bluetoothGatt != null) +
+                    ", txCharacteristic: " + (txCharacteristic != null) + ", isConnected: " + isConnected);
             isWriting = false;
             if (communicationListener != null) {
                 communicationListener.onCommunicationError("Chưa kết nối với thiết bị");
@@ -656,7 +692,7 @@ public class BLEService implements RobotCommunicationInterface {
             // Kiểm tra write properties của characteristic
             int properties = txCharacteristic.getProperties();
             Log.d(TAG, "TX Characteristic properties: " + properties);
-            
+
             // Thêm byte lệnh 0x15 vào đầu
             byte command = 0x15;
             byte[] messageBytes = data.getBytes(StandardCharsets.UTF_8);
@@ -664,8 +700,8 @@ public class BLEService implements RobotCommunicationInterface {
             dataToSend[0] = command;
             System.arraycopy(messageBytes, 0, dataToSend, 1, messageBytes.length);
 
-            Log.d(TAG, "Chuẩn bị gửi " + dataToSend.length + " bytes: [0x" + 
-                  String.format("%02x", command) + "] + \"" + data + "\"");
+            Log.d(TAG, "Chuẩn bị gửi " + dataToSend.length + " bytes: [0x" +
+                    String.format("%02x", command) + "] + \"" + data + "\"");
 
             // Set giá trị cho characteristic
             boolean setValue = txCharacteristic.setValue(dataToSend);
@@ -695,7 +731,7 @@ public class BLEService implements RobotCommunicationInterface {
             }
 
             boolean success = bluetoothGatt.writeCharacteristic(txCharacteristic);
-            
+
             if (!success) {
                 Log.e(TAG, "Gửi dữ liệu không thành công - writeCharacteristic failed");
                 isWriting = false;
@@ -765,14 +801,14 @@ public class BLEService implements RobotCommunicationInterface {
     @Override
     public void disconnect() {
         isConnected = false;
-        
+
         // Clear command queue
         synchronized (commandQueue) {
             commandQueue.clear();
             isWriting = false;
             Log.d(TAG, "Cleared command queue");
         }
-        
+
         if (bluetoothGatt != null) {
             if (hasRequiredPermissions()) {
                 bluetoothGatt.close();
@@ -781,7 +817,7 @@ public class BLEService implements RobotCommunicationInterface {
             txCharacteristic = null;
             rxCharacteristic = null;
         }
-        
+
         stopScan();
         Log.d(TAG, "Đã đóng kết nối BLE");
     }
@@ -803,4 +839,4 @@ public class BLEService implements RobotCommunicationInterface {
     public List<BluetoothDevice> getDiscoveredDevices() {
         return new ArrayList<>(discoveredDevices);
     }
-} 
+}
