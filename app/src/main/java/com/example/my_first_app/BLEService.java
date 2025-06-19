@@ -539,7 +539,7 @@ public class BLEService implements RobotCommunicationInterface {
             super.onCharacteristicChanged(gatt, characteristic);
             if (RX_CHARACTERISTIC_UUID.equals(characteristic.getUuid())) {
                 final String receivedData = new String(characteristic.getValue(), StandardCharsets.UTF_8);
-                Log.d(TAG, "Nhận được dữ liệu: " + receivedData);
+                // Log.d(TAG, "Nhận được dữ liệu: " + receivedData);
                 
                 mainHandler.post(() -> {
                     if (communicationListener != null) {

@@ -56,7 +56,7 @@ public class CameraAIFragment extends Fragment {
     // Định nghĩa các model có sẵn
     private static final String MODEL_SSD_MOBILENET = "ssd_mobilenet_v1_1_metadata_1.tflite";
     private static final String MODEL_MOBILENET_V1 = "mobilenet_v1_1.0_224.tflite";
-    private static final String MODEL_YOLOV10N = "yolov10n_float16_old.tflite";
+    private static final String MODEL_YOLOV10N = "yolov10n_float16.tflite";
 
     // Model hiện tại đang sử dụng
     private String currentModelName = MODEL_YOLOV10N;
@@ -84,6 +84,7 @@ public class CameraAIFragment extends Fragment {
 
             initializeViews(view);
             setupCommunicationService();
+            sendRobotCommand("ST");
             setupScanButton(view);
 
             // Initialize camera executor early
