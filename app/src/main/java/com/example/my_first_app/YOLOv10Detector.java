@@ -25,7 +25,7 @@ public class YOLOv10Detector {
     private static final String TAG = "YOLOv10Detector";
     
     // Model constants
-    private static final int INPUT_SIZE = 640;
+    private static final int INPUT_SIZE = 320;
     private static final int NUM_CLASSES = 80;
     private static final float CONFIDENCE_THRESHOLD = 0.25f;
     private static final float NMS_THRESHOLD = 0.45f;
@@ -114,8 +114,8 @@ public class YOLOv10Detector {
             // Prepare input buffer
             ByteBuffer inputBuffer = ByteBuffer.allocateDirect(4 * INPUT_SIZE * INPUT_SIZE * 3);
             inputBuffer.order(ByteOrder.nativeOrder());
-            
-            // Convert tensor to buffer (normalize to 0-1)
+
+            // Chuyển ảnh về buffer float (RGB, normalized)
             int[] pixels = new int[INPUT_SIZE * INPUT_SIZE];
             tensorImage.getBitmap().getPixels(pixels, 0, INPUT_SIZE, 0, 0, INPUT_SIZE, INPUT_SIZE);
             

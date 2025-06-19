@@ -67,7 +67,7 @@ public class OverlayView extends View {
         } else if (command.contains("DỪNG")) {
             callBackCommand = "ST";
         } else {
-            callBackCommand = "SR";
+            callBackCommand = "TR";
         }
 
         Log.d("OverlayView", "Command: " + callBackCommand);
