@@ -1,8 +1,7 @@
 // OverlayView.java
-package com.example.my_first_app;
+package com.example.my_first_app; // Thay đổi package name
 
 import android.content.Context;
-import android.util.Pair;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
@@ -25,9 +24,6 @@ public class OverlayView extends View {
     private int imageWidth = 0;
     private int imageHeight = 0;
     private String callBackCommand = "";
-    private String lastCommand = "";
-    private long lastCommandTime = 0;
-    private static final long COMMAND_INTERVAL_MS = 1000;
     private Controller controller;
 
     // Các màu khác nhau cho từng loại object - dùng màu nổi bật hơn
@@ -62,16 +58,14 @@ public class OverlayView extends View {
         this.imageWidth = imageWidth;
         this.imageHeight = imageHeight;
 
-        // analyzePersonPosition giờ trả về lệnh BLE dạng "FW:0.50"
-        Pair<String, String> result = analyzePersonPosition(results);
-        String commandWithSpeed = result.second;
-
-        long currentTime = System.currentTimeMillis();
-        if (!commandWithSpeed.equals(lastCommand) || currentTime - lastCommandTime >= COMMAND_INTERVAL_MS) {
-            callBackCommand = commandWithSpeed;
-            lastCommand = commandWithSpeed;
-            lastCommandTime = currentTime;
-            Log.d("OverlayView", "New command issued: " + commandWithSpeed);
+        // Phân tích kết quả ngay tại đây
+        String command = analyzePersonPosition(results);
+        if (command.contains("XOAY TRÁI")) {
+            callBackCommand = "TL";
+        } else if (command.contains("TIẾN")) {
+            callBackCommand = "FW";
+        } else if (command.contains("DỪNG")) {
+            callBackCommand = "ST";
         } else {
             callBackCommand = "TR";
         }
@@ -90,13 +84,18 @@ public class OverlayView extends View {
         Log.d("OverlayView",
                 "View size: " + getWidth() + "x" + getHeight() + ", Image size: " + imageWidth + "x" + imageHeight);
 
-        // Phân tích kết quả → lấy mô tả hiển thị + lệnh robot
-        Pair<String, String> result = analyzePersonPosition(results);
-        String displayText = result.first; // hiển thị lên màn hình
-        callBackCommand = result.second; // lệnh gửi BLE: "FW:0.50"
-
-        // Vẽ text hiển thị
-        displayCommand(canvas, displayText);
+        // Phân tích và hiển thị lệnh điều khiển
+        String command = analyzePersonPosition(results);
+        if (command.contains("XOAY TRÁI")) {
+            callBackCommand = "TL";
+        } else if (command.contains("TIẾN")) {
+            callBackCommand = "FW";
+        } else if (command.contains("DỪNG")) {
+            callBackCommand = "ST";
+        } else {
+            callBackCommand = "TR";
+        }
+        displayCommand(canvas, command);
 
         if (results == null || results.isEmpty()) {
             Log.d("OverlayView", "No results to draw, showing 'no person detected' message");
@@ -109,25 +108,32 @@ public class OverlayView extends View {
         float scaleY = (float) getHeight() / imageHeight;
 
         for (int i = 0; i < results.size(); i++) {
-            Detection resultItem = results.get(i);
-            RectF box = resultItem.getBoundingBox();
+            Detection result = results.get(i);
+            RectF box = result.getBoundingBox();
 
+            // Chọn màu cho object này
             int colorIndex = i % colors.length;
             int currentColor = colors[colorIndex];
             boxPaint.setColor(currentColor);
             backgroundPaint.setColor(currentColor);
 
+            // Chuyển đổi tọa độ từ ảnh gốc sang view
             float left = box.left * scaleX;
             float top = box.top * scaleY;
             float right = box.right * scaleX;
             float bottom = box.bottom * scaleY;
 
+            // Clamp coordinates to view bounds
             left = Math.max(0, Math.min(left, getWidth()));
             top = Math.max(0, Math.min(top, getHeight()));
             right = Math.max(0, Math.min(right, getWidth()));
             bottom = Math.max(0, Math.min(bottom, getHeight()));
 
-            // Vẽ viền ngoài trắng
+            Log.d("OverlayView", "Drawing box " + i + ": left=" + left + ", top=" + top + ", right=" + right
+                    + ", bottom=" + bottom + ", color=" + Integer.toHexString(currentColor));
+
+            // Vẽ bounding box với double border để rõ ràng hơn
+            // Vẽ viền ngoài màu trắng trước
             boxPaint.setColor(Color.WHITE);
             boxPaint.setStrokeWidth(10f);
             canvas.drawRect(left, top, right, bottom, boxPaint);
@@ -137,30 +143,35 @@ public class OverlayView extends View {
             boxPaint.setStrokeWidth(6f);
             canvas.drawRect(left, top, right, bottom, boxPaint);
 
-            // Vẽ label + confidence
-            if (!resultItem.getCategories().isEmpty()) {
-                Category category = resultItem.getCategories().get(0);
+            // Lấy thông tin label và confidence
+            if (!result.getCategories().isEmpty()) {
+                Category category = result.getCategories().get(0);
                 String text = category.getLabel() + " " + String.format("%.1f%%", category.getScore() * 100);
 
+                // Đo kích thước text để vẽ background
                 float textWidth = textPaint.measureText(text);
                 float textHeight = textPaint.getTextSize();
 
+                // Vẽ background cho text
                 float textLeft = left;
                 float textTop = top - textHeight - 10;
                 float textRight = textLeft + textWidth + 20;
                 float textBottom = top - 5;
 
+                // Đảm bảo text không bị cắt ở đầu màn hình
                 if (textTop < 0) {
                     textTop = bottom + 5;
                     textBottom = textTop + textHeight + 10;
                 }
 
                 canvas.drawRect(textLeft, textTop, textRight, textBottom, backgroundPaint);
+
+                // Vẽ text
                 canvas.drawText(text, textLeft + 10, textBottom - 15, textPaint);
             }
         }
 
-        // Vẽ tổng số đối tượng
+        // Hiển thị số lượng objects được phát hiện
         if (!results.isEmpty()) {
             String countText = "Phát hiện: " + results.size() + " đối tượng";
             textPaint.setColor(Color.WHITE);
@@ -176,10 +187,9 @@ public class OverlayView extends View {
         }
     }
 
-    private Pair<String, String> analyzePersonPosition(List<Detection> results) {
+    private String analyzePersonPosition(List<Detection> results) {
         if (results == null || results.isEmpty()) {
-            String cmd = Instruction.getCommand(Instruction.TURN_RIGHT, 0.3f);
-            return new Pair<>("XOAY PHẢI - Tìm kiếm người", cmd);
+            return "XOAY PHẢI - Tìm kiếm người";
         }
 
         Detection bestPerson = null;
@@ -193,13 +203,13 @@ public class OverlayView extends View {
             Category category = detection.getCategories().get(0);
             RectF box = detection.getBoundingBox();
             int[] bbox = {
-                    (int) box.left,
-                    (int) box.top,
+                    (int) (box.left),
+                    (int) (box.top),
                     (int) (box.right - box.left),
                     (int) (box.bottom - box.top)
             };
 
-            if ("person".equalsIgnoreCase(category.getLabel())) {
+            if (category.getLabel().toLowerCase().equals("person")) {
                 if (category.getScore() > bestConfidence) {
                     bestPerson = detection;
                     bestConfidence = category.getScore();
@@ -210,14 +220,13 @@ public class OverlayView extends View {
         }
 
         if (bestPerson == null) {
-            String cmd = Instruction.getCommand(Instruction.TURN_RIGHT, 0.3f);
-            return new Pair<>("XOAY PHẢI - Tìm kiếm người", cmd);
+            return "XOAY PHẢI - Tìm kiếm người";
         }
 
         RectF personBox = bestPerson.getBoundingBox();
         int[] bboxPerson = {
-                (int) personBox.left,
-                (int) personBox.top,
+                (int) (personBox.left),
+                (int) (personBox.top),
                 (int) (personBox.right - personBox.left),
                 (int) (personBox.bottom - personBox.top)
         };
@@ -227,41 +236,26 @@ public class OverlayView extends View {
         float angular = control[1];
 
         String movement;
-        String turn;
-        String command;
-
-        // Phân tích góc quay
-        if (angular < -0.4f) {
-            turn = "XOAY TRÁI";
-        } else if (angular > 0.4f) {
-            turn = "XOAY PHẢI";
-        } else {
-            turn = "KHÔNG XOAY";
-        }
-
-        // Phân tích chuyển động thẳng
-        if (linear < 0.2f && linear >= -0.2f) {
+        if (Math.abs(linear) < 0.05f) {
             movement = "DỪNG";
-            command = Instruction.STOP;
         } else if (linear > 0) {
             movement = "TIẾN";
-            command = Instruction.getCommand(Instruction.FORWARD, Math.abs(linear));
         } else {
             movement = "LÙI";
-            command = Instruction.getCommand(Instruction.BACKWARD, Math.abs(linear));
         }
 
-        // Ưu tiên xoay nếu cần xoay mạnh
-        if (Math.abs(angular) > 0.5f) {
-            command = Instruction.getCommand(
-                    angular > 0 ? Instruction.TURN_RIGHT : Instruction.TURN_LEFT,
-                    Math.abs(angular));
+        String turn;
+        if (angular < -0.1f) {
+            turn = "XOAY TRÁI";
+        } else if (angular > 0.1f) {
+            turn = "XOAY PHẢI";
+        } else {
+            turn = "ĐI THẲNG";
         }
 
         String distance = estimateDistance(bboxPerson[2], bboxPerson[3]);
-        String speedInfo = String.format(" | Tốc độ: %.2f | Góc: %.2f", linear, angular);
 
-        return new Pair<>((turn == "KHÔNG XOAY" ? movement : turn) + speedInfo, command);
+        return movement + " - " + turn + " | " + distance;
     }
 
     private String estimateDistance(float personWidth, float personHeight) {

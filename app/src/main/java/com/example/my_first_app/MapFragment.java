@@ -80,7 +80,7 @@ public class MapFragment extends Fragment {
     private YOLOv10Detector yoloDetector;
     private static final String MODEL_SSD_MOBILENET = "ssd_mobilenet_v1_1_metadata_1.tflite";
     private static final String MODEL_MOBILENET_V1 = "mobilenet_v1_1.0_224.tflite";
-    private static final String MODEL_YOLOV10N = "yolov10n_float16_old.tflite";
+    private static final String MODEL_YOLOV10N = "yolov10n_float16.tflite";
     private boolean isDetectorInitialized = false;
     private String currentModelName = MODEL_YOLOV10N;
     private boolean useYOLOv10 = false;
