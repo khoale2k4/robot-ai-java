@@ -62,6 +62,8 @@ public class OverlayView extends View {
         String command = analyzePersonPosition(results);
         if (command.contains("XOAY TRÁI")) {
             callBackCommand = "TL";
+        } else if (command.contains("XOAY PHẢI")) {
+            callBackCommand = "TR";
         } else if (command.contains("TIẾN")) {
             callBackCommand = "FW";
         } else if (command.contains("DỪNG")) {
@@ -236,7 +238,7 @@ public class OverlayView extends View {
         float angular = control[1];
 
         String movement;
-        if (Math.abs(linear) < 0.05f) {
+        if (Math.abs(linear) <= 0.2f) {
             movement = "DỪNG";
         } else if (linear > 0) {
             movement = "TIẾN";
@@ -255,7 +257,7 @@ public class OverlayView extends View {
 
         String distance = estimateDistance(bboxPerson[2], bboxPerson[3]);
 
-        return movement + " - " + turn + " | " + distance;
+        return movement + " " + linear + " - " + turn + " " + angular + " | " + distance;
     }
 
     private String estimateDistance(float personWidth, float personHeight) {
