@@ -1,4 +1,4 @@
-// MainActivity.java
+// BLEController.java
 package com.example.my_first_app; // Thay đổi package name
 
 import android.Manifest;

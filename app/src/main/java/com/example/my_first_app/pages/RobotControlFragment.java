@@ -32,7 +32,7 @@ public class RobotControlFragment extends Fragment implements RobotCommunication
     private Button disconnectButton, connectButton;
     private View noConnectionView, controlsView;
     
-    private int currentDirection = JoystickView.JoystickDirection.IDLE;
+    // private int currentDirection = JoystickView.JoystickDirection.IDLE;
     
     @Nullable
     @Override
