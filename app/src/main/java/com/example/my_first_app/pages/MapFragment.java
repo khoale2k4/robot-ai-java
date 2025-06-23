@@ -147,18 +147,21 @@ public class MapFragment extends Fragment {
                 PointF point = convertTouchToMapCoordinates(event.getX(), event.getY(), customMapView);
                 if (mapData != null) {
                     mapData.destination = point;
+                    Log.d("RobotControl", "Robot hiện tại: " + mapData.robot.toString() + ", Góc: " + Float.toString(mapData.robotAngle));
+                    Log.d("RobotControl", mapData.destination.toString() + " - " + mapData.robot.toString());
                     customMapView.setMapData(mapData);
                     new Thread(() -> {
                         final List<PointF> path = mapData.findPathToDestination();
                         if (getActivity() != null) {
                             getActivity().runOnUiThread(() -> {
                                 currentPath = path;
+                                Log.d("RobotControl's Path", currentPath != null ? currentPath.toString() : "null");
                                 executePathLoop();
                             });
                         }
                     }).start();
                 }
-                sendRobotTo(point);
+                // sendRobotTo(point);
                 return true;
             }
             return false;
@@ -568,9 +571,14 @@ public class MapFragment extends Fragment {
         return filteredResults;
     }
 
-    private void sendRobotTo(PointF point) {
-        String msg = String.format("Robot đến: (%.1f, %.1f)", point.x, point.y);
-        // Toast.makeText(getContext(), msg, Toast.LENGTH_SHORT).show();
+    private void Notice(String msg) {
+        // String msg = String.format("Robot đến: (%.1f, %.1f)", point.x, point.y);
+        try {
+            Log.d("RobotControl", msg);
+            Toast.makeText(getContext(), msg, Toast.LENGTH_SHORT).show();
+        } catch (Exception e) {
+            Log.e("RobotControl", "Error logging message: " + e.getMessage());
+        }
     }
 
     private PointF convertTouchToMapCoordinates(float x, float y, View view) {
@@ -640,22 +648,23 @@ public class MapFragment extends Fragment {
     }
 
     private void executePathLoop() {
-        // Hàm này không cần thay đổi
         simulationRunnable = new Runnable() {
             @Override
             public void run() {
-                // Toast.makeText(getContext(), "RobotControl, Đang chạy hàm run", Toast.LENGTH_SHORT).show();
+                // Toast.makeText(getContext(), "RobotControl, Đang chạy hàm run",
+                // Toast.LENGTH_SHORT).show();
                 if (currentPath == null || currentPath.isEmpty()) {
                     Log.d("RobotControl", "Đã đến đích!");
                     return;
                 }
                 String command = mapData.getNextCommand(currentPath);
+                // Notice(command);
                 if (command != null) {
-                    Log.d("RobotControl", command);
-                    Log.d("Robot position", 
-    "x: " + mapData.robot.x +
-    ", y: " + mapData.robot.y +
-    ", angle: " + mapData.robotAngle);
+                    // Log.d("RobotControl", command);
+                    // Log.d("Robot position",
+                    //         "x: " + mapData.robot.x +
+                    //                 ", y: " + mapData.robot.y +
+                    //                 ", angle: " + mapData.robotAngle);
 
                     mapData.executeCommand(command);
                     customMapView.setMapData(mapData);

@@ -76,48 +76,39 @@ public class MapData {
         return smoothPath(pathPoints);
     }
 
-    /**
-     * Lấy lệnh tiếp theo cho robot dựa trên một đường đi cho trước.
-     * 
-     * @param path Đường đi (danh sách các điểm), thường là kết quả từ
-     *             findPathToDestination().
-     * @return Chuỗi lệnh ("ROTATE ...", "ADVANCE ...") hoặc null nếu đã đến đích.
-     */
     public String getNextCommand(List<PointF> path) {
         if (path == null || path.isEmpty()) {
-            return null; // Đã đến đích hoặc không có đường đi
+            return null;
         }
 
         PointF nextWaypoint = path.get(0);
         float distanceToWaypoint = getDistance(this.robot, nextWaypoint);
 
+        // Kiểm tra đã đến điểm hiện tại chưa
         if (distanceToWaypoint < DISTANCE_TOLERANCE_CM) {
-            path.remove(0); // Đã đến điểm này, loại bỏ nó
-            if (path.isEmpty()) {
-                return null; // Hoàn thành toàn bộ đường đi
-            }
-            nextWaypoint = path.get(0);
-            distanceToWaypoint = getDistance(this.robot, nextWaypoint);
+            path.remove(0);
+            return path.isEmpty() ? null : getNextCommand(path); // Đệ quy cho điểm tiếp theo
         }
 
-        float targetAngle = (float) Math
-                .toDegrees(Math.atan2(nextWaypoint.y - this.robot.y, nextWaypoint.x - this.robot.x));
+        // Tính góc mục tiêu và chuẩn hóa
+        float targetAngle = (float) Math.toDegrees(Math.atan2(
+                nextWaypoint.y - this.robot.y,
+                nextWaypoint.x - this.robot.x));
+        targetAngle = (targetAngle + 360) % 360;
+
+        // Tính góc quay tối ưu nhất
         float angleToRotate = targetAngle - this.robotAngle;
+        angleToRotate = (angleToRotate + 180) % 360 - 180; // Chuẩn hóa về [-180,180]
 
-        while (angleToRotate <= -180)
-            angleToRotate += 360;
-        while (angleToRotate > 180)
-            angleToRotate -= 360;
-
+        // Kiểm tra nên lệnh xoay
         if (Math.abs(angleToRotate) > ANGLE_TOLERANCE_DEGREES) {
-            if (angleToRotate > 0) { // DÒNG MỚI - Quay ngược chiều kim đồng hồ là SANG TRÁI
-                return String.format(Locale.US, "ROTATE LEFT %.1f degree", angleToRotate);
-            } else { // Quay cùng chiều kim đồng hồ là SANG PHẢI
-                return String.format(Locale.US, "ROTATE RIGHT %.1f degree", -angleToRotate);
-            }
-        } else {
-            return String.format(Locale.US, "ADVANCE %.1f cm", distanceToWaypoint);
+            String direction = angleToRotate > 0 ? "LEFT" : "RIGHT";
+            return String.format(Locale.US, "ROTATE %s %.1f degree",
+                    direction, Math.abs(angleToRotate));
         }
+
+        // Lệnh di chuyển thẳng
+        return String.format(Locale.US, "ADVANCE %.1f cm", distanceToWaypoint);
     }
 
     // --- LOGIC TÌM ĐƯỜNG A* (PRIVATE) ---
@@ -139,6 +130,7 @@ public class MapData {
     }
 
     private boolean isWalkable(PointF point) {
+        // Check obstacles
         if (this.obstacles != null) {
             for (PointF obstacle : this.obstacles) {
                 if (getDistance(point, obstacle) < ROBOT_RADIUS) {
@@ -146,12 +138,51 @@ public class MapData {
                 }
             }
         }
+
+        // Check walls
         if (this.walls != null) {
             for (Wall wall : this.walls) {
-                // Cần cài đặt logic kiểm tra va chạm giữa điểm và đoạn thẳng
+                if (distanceToWall(point, wall) < ROBOT_RADIUS) {
+                    return false;
+                }
             }
         }
         return true;
+    }
+
+    private float distanceToWall(PointF point, Wall wall) {
+        // Calculate minimum distance between point and wall segment
+        // Using vector projection math
+        float x1 = wall.start.x;
+        float y1 = wall.start.y;
+        float x2 = wall.end.x;
+        float y2 = wall.end.y;
+        float x0 = point.x;
+        float y0 = point.y;
+
+        float A = x0 - x1;
+        float B = y0 - y1;
+        float C = x2 - x1;
+        float D = y2 - y1;
+
+        float dot = A * C + B * D;
+        float len_sq = C * C + D * D;
+        float param = (len_sq != 0) ? dot / len_sq : -1;
+
+        float xx, yy;
+
+        if (param < 0) {
+            xx = x1;
+            yy = y1;
+        } else if (param > 1) {
+            xx = x2;
+            yy = y2;
+        } else {
+            xx = x1 + param * C;
+            yy = y1 + param * D;
+        }
+
+        return (float) Math.sqrt((x0 - xx) * (x0 - xx) + (y0 - yy) * (y0 - yy));
     }
 
     private List<Node> aStarSearch(Node[][] grid) {
@@ -219,23 +250,32 @@ public class MapData {
     }
 
     private List<PointF> smoothPath(List<PointF> path) {
-        if (path.size() < 2)
+        if (path.size() < 3)
             return path;
-        List<PointF> smoothedPath = new ArrayList<>();
-        smoothedPath.add(path.get(0));
-        int currentPointIndex = 0;
-        while (currentPointIndex < path.size() - 1) {
-            int nextPointIndex = currentPointIndex + 1;
-            for (int i = path.size() - 1; i > nextPointIndex; i--) {
-                if (hasLineOfSight(path.get(currentPointIndex), path.get(i))) {
-                    nextPointIndex = i;
-                    break;
-                }
+
+        List<PointF> smoothed = new ArrayList<>();
+        smoothed.add(path.get(0));
+
+        for (int i = 1; i < path.size() - 1; i++) {
+            PointF prev = path.get(i - 1);
+            PointF current = path.get(i);
+            PointF next = path.get(i + 1);
+
+            // Calculate average position
+            PointF smoothedPoint = new PointF(
+                    (prev.x + current.x + next.x) / 3,
+                    (prev.y + current.y + next.y) / 3);
+
+            // Only add if it maintains visibility
+            if (hasLineOfSight(smoothed.get(smoothed.size() - 1), smoothedPoint)) {
+                smoothed.add(smoothedPoint);
+            } else {
+                smoothed.add(current);
             }
-            smoothedPath.add(path.get(nextPointIndex));
-            currentPointIndex = nextPointIndex;
         }
-        return smoothedPath;
+
+        smoothed.add(path.get(path.size() - 1));
+        return smoothed;
     }
 
     private boolean hasLineOfSight(PointF p1, PointF p2) {
@@ -260,7 +300,7 @@ public class MapData {
             return;
         }
 
-        // Log.d("MapData", "Executing command: " + command);
+        Log.d("MapData", "Executing command: " + command);
         String[] parts = command.split(" ");
         if (parts.length < 2)
             return;

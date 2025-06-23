@@ -168,8 +168,8 @@ public class YOLOv10Detector {
     private List<Detection> postProcess(float[][] outputs, int originalWidth, int originalHeight) {
         List<Detection> detections = new ArrayList<>();
 
-        Log.d(TAG, "Processing " + outputs.length + " potential detections");
-        Log.d(TAG, "Original image size: " + originalWidth + "x" + originalHeight);
+        // Log.d(TAG, "Processing " + outputs.length + " potential detections");
+        // Log.d(TAG, "Original image size: " + originalWidth + "x" + originalHeight);
 
         for (int i = 0; i < outputs.length; i++) {
             float[] output = outputs[i];
@@ -226,7 +226,7 @@ public class YOLOv10Detector {
             Log.d(TAG, "Valid detection: " + className + " (" + confidence + ")");
         }
 
-        Log.d(TAG, "Found " + detections.size() + " valid detections");
+        // Log.d(TAG, "Found " + detections.size() + " valid detections");
 
         // Since this model appears to have NMS already applied, we may not need
         // additional NMS
