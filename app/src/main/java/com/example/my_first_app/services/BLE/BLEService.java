@@ -606,7 +606,7 @@ public class BLEService implements RobotCommunicationInterface {
         }
 
         if(lastOrder.equals(data)) {
-            Log.w(TAG, "Lệnh trùng lặp: " + data);
+            // Log.w(TAG, "Lệnh trùng lặp: " + data);
             return; // Không gửi lệnh trùng lặp
         }
         lastOrder = data;

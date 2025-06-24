@@ -11,8 +11,13 @@
         android:icon="@android:drawable/ic_menu_camera"
         android:title="Camera AI" />
     
-    <item
+    <!-- <item
         android:id="@+id/nav_map"
+        android:icon="@android:drawable/ic_menu_camera"
+        android:title="Map" /> -->
+    
+    <item
+        android:id="@+id/nav_auto"
         android:icon="@android:drawable/ic_menu_camera"
         android:title="Auto" />
         
