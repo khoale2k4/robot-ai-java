@@ -1,31 +1,41 @@
 package com.example.my_first_app;
-// import com.example.my_first_app.datas.Instruction;
 
-import android.content.Intent;
 import android.content.Context;
-import android.graphics.*;
+import android.graphics.Canvas;
+import android.graphics.Color;
+import android.graphics.Matrix;
+import android.graphics.Paint;
+import android.graphics.PointF;
 import android.graphics.drawable.Drawable;
 import android.util.AttributeSet;
-import android.widget.Toast;
-import android.util.Pair;
 import android.util.Log;
-import android.view.*;
+import android.util.Pair;
+import android.view.GestureDetector;
+import android.view.MotionEvent;
+import android.view.ScaleGestureDetector;
+import android.view.View;
+import android.widget.Toast;
 
 import androidx.core.content.ContextCompat;
 
+import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Queue;
+import java.util.Set;
 
 public class InteractiveMapView extends View implements RobotCommunicationInterface.CommunicationListener {
     private static final String TAG = "InteractiveMapView";
-    private final float DISTANCE_THRESHOLD = 20f; // chấp nhận sai số vị trí
-    private final float ANGLE_THRESHOLD = 5f; // chấp nhận sai số góc
-    private List<PointF> waypoints = new ArrayList<>(); // danh sách các điểm cần đi qua
-    private int currentTargetIndex = 0;
-    private int currentRouteIndex = 0;
+    private final float DISTANCE_THRESHOLD = 20f; // Chấp nhận sai số vị trí để đến waypoint tiếp theo
+    private final float ANGLE_THRESHOLD = 10f;    // Chấp nhận sai số góc để đi thẳng
 
-    private List<PointF> currentPath = new ArrayList<>(); // Đường đi hiện tại đến điểm đích
-    private int currentPathIndex = 0; // Vị trí hiện tại trong đường đi
+    // === CÁC BIẾN MỚI CHO VIỆC TÌM ĐƯỜNG VÀ ĐIỀU HƯỚNG ===
+    private List<PointF> currentPath = new ArrayList<>(); // Đường đi được tính toán đến điểm đích
+    private int currentPathIndex = 0; // Vị trí waypoint hiện tại trong currentPath
 
     private Drawable mapDrawable;
     private Matrix matrix = new Matrix();
@@ -40,6 +50,7 @@ public class InteractiveMapView extends View implements RobotCommunicationInterf
     private Paint robotPaint;
     private Paint directionPaint;
     private Paint routesPaint;
+    private Paint pathPaint; // Paint để vẽ đường đi đã tính toán
 
     private ScaleGestureDetector scaleDetector;
     private GestureDetector gestureDetector;
@@ -59,56 +70,15 @@ public class InteractiveMapView extends View implements RobotCommunicationInterf
         invalidate();
     }
 
-    private void setupCommunicationService() {
-        try {
-            robotCommunication = ConnectionManager.getInstance().getCommunicationService();
-
-            if (robotCommunication != null) {
-                robotCommunication.setCommunicationListener(this);
-
-                if (robotCommunication.isConnected()) {
-                    String deviceName = "Unknown Device";
-                    try {
-                        if (robotCommunication.getConnectedDevice() != null) {
-                            String name = robotCommunication.getConnectedDevice().getName();
-                            if (name != null && !name.isEmpty()) {
-                                deviceName = name;
-                            }
-                        }
-                    } catch (Exception e) {
-                        Log.w(TAG, "Error getting device name", e);
-                    }
-
-                    // if (connectionStatusText != null) {
-                    // connectionStatusText.setText("Connected to: " + deviceName + " (BLE)");
-                    // }
-
-                    // showControlsView(true);
-                } else {
-                    // if (connectionStatusText != null) {
-                    // connectionStatusText.setText("Not connected");
-                    // }
-                    // showControlsView(false);
-                }
-            } else {
-                // if (connectionStatusText != null) {
-                // connectionStatusText.setText("No robot service available");
-                // }
-                // showControlsView(false);
-            }
-
-        } catch (Exception e) {
-            Log.e(TAG, "Error setting up communication service", e);
-            // if (connectionStatusText != null) {
-            // connectionStatusText.setText("Error setting up communication");
-            // }
-        }
-    }
-
     public void setCreating(boolean creatingMap) {
         this.creatingMap = creatingMap;
         if (!creatingMap) {
-            startAutonomous();
+            // Không tự động bắt đầu, đợi người dùng tap điểm đến
+        } else {
+            // Xóa đường đi cũ khi vào chế độ tạo bản đồ
+            currentPath.clear();
+            tapPoints.clear();
+            invalidate();
         }
     }
 
@@ -124,6 +94,13 @@ public class InteractiveMapView extends View implements RobotCommunicationInterf
         routesPaint.setColor(Color.YELLOW);
         routesPaint.setStrokeWidth(4);
         routesPaint.setAntiAlias(true);
+
+        // Paint mới để vẽ đường đi được tính toán
+        pathPaint = new Paint();
+        pathPaint.setColor(Color.CYAN); // Màu xanh lam để phân biệt
+        pathPaint.setStrokeWidth(6);
+        pathPaint.setStyle(Paint.Style.STROKE);
+        pathPaint.setAntiAlias(true);
 
         directionPaint = new Paint();
         directionPaint.setColor(Color.YELLOW);
@@ -158,28 +135,33 @@ public class InteractiveMapView extends View implements RobotCommunicationInterf
 
             @Override
             public boolean onSingleTapConfirmed(MotionEvent e) {
+                if (creatingMap) {
+                    Toast.makeText(getContext(), "Switch to Autonomous Mode to set a destination.", Toast.LENGTH_SHORT).show();
+                    return false;
+                }
+
                 float x = (e.getX() - dx) / scale;
                 float y = (e.getY() - dy) / scale;
                 PointF tapPoint = new PointF(x, y);
 
                 boolean isNearRoute = false;
-                float threshold = 20f;
+                float threshold = 20f / scale; // Ngưỡng tap phụ thuộc vào mức zoom
 
                 for (Pair<PointF, PointF> segment : routes) {
-                    PointF start = segment.first;
-                    PointF end = segment.second;
-
-                    if (distanceFromPointToSegment(tapPoint, start, end) <= threshold) {
+                    if (distanceFromPointToSegment(tapPoint, segment.first, segment.second) <= threshold) {
                         isNearRoute = true;
                         break;
                     }
                 }
 
                 if (isNearRoute) {
-                    tapPoints.add(tapPoint);
+                    tapPoints.clear();
+                    tapPoints.add(tapPoint); // Chỉ giữ lại điểm tap cuối cùng
+                    startAutonomous(); // Bắt đầu tìm đường và di chuyển
                     invalidate();
                     return true;
                 } else {
+                    Toast.makeText(getContext(), "Please tap near an existing route.", Toast.LENGTH_SHORT).show();
                     return false;
                 }
             }
@@ -190,22 +172,16 @@ public class InteractiveMapView extends View implements RobotCommunicationInterf
         pointPaint.setStyle(Paint.Style.FILL);
         pointPaint.setAntiAlias(true);
     }
-
+    
+    // Các hàm tiện ích distance và distanceFromPointToSegment giữ nguyên
     private float distanceFromPointToSegment(PointF p, PointF a, PointF b) {
         float dx = b.x - a.x;
         float dy = b.y - a.y;
-
-        if (dx == 0 && dy == 0) {
-            // a và b trùng nhau
-            return distance(p, a);
-        }
-
+        if (dx == 0 && dy == 0) return distance(p, a);
         float t = ((p.x - a.x) * dx + (p.y - a.y) * dy) / (dx * dx + dy * dy);
         t = Math.max(0, Math.min(1, t));
-
         float projX = a.x + t * dx;
         float projY = a.y + t * dy;
-
         return distance(p, new PointF(projX, projY));
     }
 
@@ -215,24 +191,21 @@ public class InteractiveMapView extends View implements RobotCommunicationInterf
         return (float) Math.sqrt(dx * dx + dy * dy);
     }
 
+
     @Override
     protected void onDraw(Canvas canvas) {
         super.onDraw(canvas);
-
-        if (mapDrawable == null)
-            return;
+        if (mapDrawable == null) return;
 
         canvas.save();
         canvas.translate(dx, dy);
         canvas.scale(scale, scale);
 
+        // Vẽ map lặp lại
         int imgWidth = mapDrawable.getIntrinsicWidth();
         int imgHeight = mapDrawable.getIntrinsicHeight();
-
         int viewWidth = (int) (getWidth() / scale) + imgWidth;
         int viewHeight = (int) (getHeight() / scale) + imgHeight;
-
-        // Vẽ bản đồ vô tận
         for (int x = -imgWidth; x < viewWidth; x += imgWidth) {
             for (int y = -imgHeight; y < viewHeight; y += imgHeight) {
                 mapDrawable.setBounds(x, y, x + imgWidth, y + imgHeight);
@@ -240,23 +213,21 @@ public class InteractiveMapView extends View implements RobotCommunicationInterf
             }
         }
 
-        // 🔻 Nếu có robot, xoá các điểm gần robot
-        if (mapData != null && mapData.robot != null) {
-            PointF robot = mapData.robot;
-            float threshold = 20f;
-            for (int i = 0; i < tapPoints.size(); i++) {
-                PointF point = tapPoints.get(i);
-                float dx = robot.x - point.x;
-                float dy = robot.y - point.y;
-                float distance = (float) Math.sqrt(dx * dx + dy * dy);
-                if (distance <= threshold) {
-                    tapPoints.remove(i);
-                    i--; // điều chỉnh index sau khi remove
-                }
-            }
+        // Vẽ các route (đường đi gốc của robot)
+        for (Pair<PointF, PointF> segment : routes) {
+            canvas.drawLine(segment.first.x, segment.first.y, segment.second.x, segment.second.y, routesPaint);
         }
 
-        // Vẽ các điểm tap
+        // Vẽ đường đi đã được tính toán (currentPath)
+        if (!currentPath.isEmpty()) {
+            for (int i = 0; i < currentPath.size() - 1; i++) {
+                PointF start = currentPath.get(i);
+                PointF end = currentPath.get(i + 1);
+                canvas.drawLine(start.x, start.y, end.x, end.y, pathPaint);
+            }
+        }
+        
+        // Vẽ điểm tap (điểm đích)
         for (PointF point : tapPoints) {
             canvas.drawCircle(point.x, point.y, 10 / scale, pointPaint);
         }
@@ -265,168 +236,163 @@ public class InteractiveMapView extends View implements RobotCommunicationInterf
         if (mapData != null && mapData.robot != null) {
             PointF robot = mapData.robot;
             canvas.drawCircle(robot.x, robot.y, 20 / scale, robotPaint);
-
-            float length = 40;
+            float length = 40 / scale;
             float angleRad = (float) Math.toRadians(mapData.robotAngle);
             float dxArrow = (float) (length * Math.cos(angleRad));
             float dyArrow = (float) (length * Math.sin(angleRad));
             canvas.drawLine(robot.x, robot.y, robot.x + dxArrow, robot.y + dyArrow, directionPaint);
         }
-
-        // Vẽ các route (đường đi của robot)
-        for (Pair<PointF, PointF> segment : routes) {
-            PointF start = segment.first;
-            PointF end = segment.second;
-            canvas.drawLine(start.x, start.y, end.x, end.y, routesPaint);
-        }
-
+        
         canvas.restore();
     }
 
-    private void drawRobot(Canvas canvas, PointF pos, float angleDegrees) {
-        // Xoá điểm gần robot (nếu có)
-        float threshold = 20f;
-        for (int i = 0; i < tapPoints.size(); i++) {
-            PointF point = tapPoints.get(i);
-            float dx = pos.x - point.x;
-            float dy = pos.y - point.y;
-            float distance = (float) Math.sqrt(dx * dx + dy * dy);
-            if (distance <= threshold) {
-                tapPoints.remove(i);
-                i--; // Điều chỉnh chỉ số vì danh sách bị thay đổi
+
+    //================================================================//
+    // HÀM TÌM ĐƯỜNG MỚI (PATHFINDING)
+    //================================================================//
+
+    /**
+     * Tìm điểm trên mạng lưới routes gần nhất với một điểm cho trước.
+     */
+    private PointF findClosestPointOnRoutes(PointF point) {
+        if (routes.isEmpty()) return null;
+
+        PointF closestPoint = null;
+        float minDistance = Float.MAX_VALUE;
+
+        for (Pair<PointF, PointF> segment : routes) {
+            PointF start = segment.first;
+            PointF end = segment.second;
+            
+            float distToStart = distance(point, start);
+            float distToEnd = distance(point, end);
+
+            if (distToStart < minDistance) {
+                minDistance = distToStart;
+                closestPoint = start;
+            }
+            if (distToEnd < minDistance) {
+                minDistance = distToEnd;
+                closestPoint = end;
             }
         }
-
-        // Vẽ robot (tam giác chỉ hướng)
-        Paint robotPaint = new Paint();
-        robotPaint.setColor(Color.BLUE);
-        robotPaint.setStyle(Paint.Style.FILL);
-        robotPaint.setAntiAlias(true);
-
-        float size = 30f;
-        float angleRad = (float) Math.toRadians(angleDegrees);
-        float x = pos.x;
-        float y = pos.y;
-
-        PointF p1 = new PointF(x + (float) Math.cos(angleRad) * size, y + (float) Math.sin(angleRad) * size);
-        PointF p2 = new PointF(x + (float) Math.cos(angleRad + 2.5) * size * 0.6f,
-                y + (float) Math.sin(angleRad + 2.5) * size * 0.6f);
-        PointF p3 = new PointF(x + (float) Math.cos(angleRad - 2.5) * size * 0.6f,
-                y + (float) Math.sin(angleRad - 2.5) * size * 0.6f);
-
-        android.graphics.Path path = new android.graphics.Path();
-        path.moveTo(p1.x, p1.y);
-        path.lineTo(p2.x, p2.y);
-        path.lineTo(p3.x, p3.y);
-        path.close();
-
-        canvas.drawPath(path, robotPaint);
+        return closestPoint;
     }
 
-    public void updateRobot(float distance, float angleDeltaDegrees) {
-        // Cập nhật góc quay mới
-        mapData.robotAngle += angleDeltaDegrees;
+    /**
+     * Thuật toán BFS để tìm đường đi trên đồ thị routes.
+     */
+    private List<PointF> findPathOnRoutes(PointF startPos, PointF endPos) {
+        if (routes.isEmpty()) return null;
 
-        // Đảm bảo góc trong khoảng [0, 360)
-        if (mapData.robotAngle < 0)
-            mapData.robotAngle += 360;
-        if (mapData.robotAngle >= 360)
-            mapData.robotAngle -= 360;
+        // 1. Tìm điểm bắt đầu và kết thúc trên đồ thị
+        PointF startNode = findClosestPointOnRoutes(startPos);
+        PointF endNode = findClosestPointOnRoutes(endPos);
 
-        // Tính toán vị trí mới dựa trên góc hiện tại
-        float angleRad = (float) Math.toRadians(mapData.robotAngle);
-        float dx = (float) (distance * Math.cos(angleRad));
-        float dy = (float) (distance * Math.sin(angleRad));
+        if (startNode == null || endNode == null) return null;
 
-        // Cập nhật vị trí robot
-        mapData.robot.x += dx;
-        mapData.robot.y += dy;
+        // 2. Xây dựng đồ thị (adjacency list)
+        Map<PointF, List<PointF>> adjMap = new HashMap<>();
+        Set<PointF> nodes = new HashSet<>();
+        for (Pair<PointF, PointF> segment : routes) {
+            nodes.add(segment.first);
+            nodes.add(segment.second);
+            adjMap.computeIfAbsent(segment.first, k -> new ArrayList<>()).add(segment.second);
+            adjMap.computeIfAbsent(segment.second, k -> new ArrayList<>()).add(segment.first);
+        }
 
-        // Vẽ lại bản đồ
-        invalidate();
-    }
+        // 3. Chạy BFS
+        Queue<PointF> queue = new ArrayDeque<>();
+        Map<PointF, PointF> cameFrom = new HashMap<>(); // Để truy vết đường đi
+        
+        queue.add(startNode);
+        cameFrom.put(startNode, null);
 
-    @Override
-    public boolean onTouchEvent(MotionEvent event) {
-        scaleDetector.onTouchEvent(event);
-        gestureDetector.onTouchEvent(event);
-        return true;
-    }
+        PointF current = null;
+        while (!queue.isEmpty()) {
+            current = queue.poll();
+            if (current.equals(endNode)) {
+                break; // Tìm thấy đích
+            }
 
-    private void updateRobotAngle(float angle) {
-        if (mapData == null)
-            return;
-        mapData.robotAngle = (angle + 360) % 360;
-        setMapData(mapData);
-    }
-
-    public void moveForward(float distance) {
-        if (mapData == null || mapData.robot == null)
-            return;
-
-        float angleDegrees = mapData.robotAngle;
-        float angleRad = (float) Math.toRadians(angleDegrees);
-
-        PointF oldPos = new PointF(mapData.robot.x, mapData.robot.y);
-
-        float dx = (float) (distance * Math.cos(angleRad));
-        float dy = (float) (distance * Math.sin(angleRad));
-
-        mapData.robot.x += dx;
-        mapData.robot.y += dy;
-
-        if (creatingMap)
-            routes.add(new Pair<>(oldPos, new PointF(mapData.robot.x, mapData.robot.y)));
-
-        setMapData(mapData);
-    }
-
-    public void resetView() {
-        dx = 0;
-        dy = 0;
-        scale = 1.0f;
-        routes.clear();
-        tapPoints.clear();
-        invalidate();
-    }
-
-    private void sendRobotCommand(String command) {
-        try {
-            Log.d(TAG, "Sending " + command);
-
-            if (robotCommunication != null && robotCommunication.isConnected()) {
-                robotCommunication.sendRobotCommand(command);
-            } else {
-                if (getContext() != null) {
-                    Toast.makeText(getContext(), "Robot not connected", Toast.LENGTH_SHORT).show();
+            if (adjMap.containsKey(current)) {
+                for (PointF neighbor : adjMap.get(current)) {
+                    if (!cameFrom.containsKey(neighbor)) {
+                        cameFrom.put(neighbor, current);
+                        queue.add(neighbor);
+                    }
                 }
             }
-        } catch (Exception e) {
-            Log.e(TAG, "Error sending robot command: " + command, e);
         }
+        
+        // 4. Truy vết ngược để tạo đường đi
+        if (current == null || !current.equals(endNode)) {
+            return null; // Không tìm thấy đường đi
+        }
+
+        List<PointF> path = new ArrayList<>();
+        PointF temp = endNode;
+        while (temp != null) {
+            path.add(temp);
+            temp = cameFrom.get(temp);
+        }
+        Collections.reverse(path);
+        
+        // Nếu điểm đầu tiên của path không phải là vị trí robot, thêm vị trí robot vào đầu
+        if (!path.isEmpty() && distance(path.get(0), startPos) > 1f) {
+            path.add(0, startPos);
+        }
+
+        return path;
     }
 
+    //================================================================//
+    // LOGIC ĐIỀU KHIỂN ROBOT ĐÃ ĐƯỢC CẬP NHẬT
+    //================================================================//
+
+    /**
+     * Bắt đầu chế độ tự hành. Tìm đường và khởi động chuỗi lệnh.
+     */
     public void startAutonomous() {
-        if (tapPoints.isEmpty() || mapData == null || mapData.robot == null)
-            return;
-
-        waypoints.clear();
-        waypoints.addAll(tapPoints);
-        currentTargetIndex = 0;
-
-        sendNextCommand();
-    }
-
-    private void sendNextCommand() {
-        if (currentRouteIndex >= routes.size()) {
-            creatingMap = true;
-            sendRobotCommand(Instruction.STOP);
+        if (tapPoints.isEmpty() || mapData == null || mapData.robot == null) {
+            Log.w(TAG, "Cannot start autonomous: no destination or robot data.");
             return;
         }
 
-        Pair<PointF, PointF> currentSegment = routes.get(currentRouteIndex);
-        PointF target = currentSegment.second; // luôn đi đến điểm thứ hai của đoạn
+        PointF destination = tapPoints.get(0); // Lấy điểm đích đã tap
+        Log.d(TAG, "Finding path from " + mapData.robot + " to " + destination);
 
+        // Tìm đường đi mới
+        List<PointF> foundPath = findPathOnRoutes(mapData.robot, destination);
+
+        if (foundPath != null && !foundPath.isEmpty()) {
+            currentPath = foundPath;
+            currentPathIndex = 0; // Bắt đầu từ waypoint đầu tiên
+            Log.d(TAG, "Path found with " + currentPath.size() + " waypoints. Starting navigation.");
+            sendNextCommand(); // Gửi lệnh đầu tiên
+        } else {
+            Log.e(TAG, "No path found to the destination.");
+            Toast.makeText(getContext(), "No path found!", Toast.LENGTH_SHORT).show();
+            currentPath.clear();
+        }
+        invalidate(); // Vẽ lại để hiển thị đường đi mới
+    }
+
+    /**
+     * Gửi lệnh tiếp theo (xoay hoặc đi thẳng) để đến waypoint kế tiếp.
+     */
+    private void sendNextCommand() {
+        // Kiểm tra điều kiện dừng
+        if (currentPath.isEmpty() || currentPathIndex >= currentPath.size() || mapData == null || mapData.robot == null) {
+            Log.d(TAG, "Navigation finished or aborted.");
+            sendRobotCommand("S"); // Gửi lệnh dừng
+            currentPath.clear();
+            tapPoints.clear();
+            invalidate();
+            return;
+        }
+
+        PointF target = currentPath.get(currentPathIndex);
         PointF robot = mapData.robot;
         float currentAngle = mapData.robotAngle;
 
@@ -434,30 +400,50 @@ public class InteractiveMapView extends View implements RobotCommunicationInterf
         float dy = target.y - robot.y;
         float distance = (float) Math.sqrt(dx * dx + dy * dy);
 
+        // 1. Kiểm tra xem đã đến waypoint chưa
         if (distance < DISTANCE_THRESHOLD) {
-            currentRouteIndex++; // Đến cuối đoạn → sang đoạn tiếp theo
+            Log.d(TAG, "Reached waypoint " + currentPathIndex + ": " + target);
+            currentPathIndex++; // Chuyển sang waypoint tiếp theo
+            if (currentPathIndex >= currentPath.size()) {
+                Log.d(TAG, "Destination reached!");
+                sendRobotCommand("S"); // Dừng khi đến đích cuối cùng
+                currentPath.clear();
+                tapPoints.clear();
+                invalidate();
+                return;
+            }
+            // Gọi lại để xử lý cho waypoint tiếp theo ngay lập tức
             sendNextCommand();
             return;
         }
 
+        // 2. Nếu chưa đến, tính toán góc và gửi lệnh
         float desiredAngle = (float) Math.toDegrees(Math.atan2(dy, dx));
         float angleDiff = normalizeAngle(desiredAngle - currentAngle);
 
         if (Math.abs(angleDiff) > ANGLE_THRESHOLD) {
+            // Cần xoay
             if (angleDiff > 0) {
-                sendRobotCommand(Instruction.TURN_RIGHT);
+                Log.d(TAG, "Turning RIGHT. Diff: " + angleDiff);
+                sendRobotCommand(Instruction.TURN_RIGHT); // Instruction.TURN_RIGHT
             } else {
-                sendRobotCommand(Instruction.TURN_LEFT);
+                Log.d(TAG, "Turning LEFT. Diff: " + angleDiff);
+                sendRobotCommand(Instruction.TURN_LEFT); // Instruction.TURN_LEFT
             }
         } else {
-            sendRobotCommand(Instruction.FORWARD);
+            // Đã đúng hướng, đi thẳng
+            Log.d(TAG, "Moving FORWARD. Distance: " + distance);
+            sendRobotCommand(Instruction.FORWARD); // Instruction.FORWARD
         }
     }
 
     private float normalizeAngle(float angle) {
-        angle = ((angle + 180) % 360) - 180;
-        if (angle < -180)
+        angle %= 360;
+        if (angle > 180) {
+            angle -= 360;
+        } else if (angle < -180) {
             angle += 360;
+        }
         return angle;
     }
 
@@ -467,8 +453,8 @@ public class InteractiveMapView extends View implements RobotCommunicationInterf
             Context context = getContext();
             if (context instanceof android.app.Activity && !((android.app.Activity) context).isFinishing()) {
                 ((android.app.Activity) context).runOnUiThread(() -> {
-                    // Log.d(TAG, "Data received: " + data);
                     final String receivedData = data.trim();
+                    // Giả sử robot gửi lại "D <distance>" sau khi di chuyển và "A <angle>" sau khi xoay
                     if (receivedData.startsWith("D ")) {
                         String[] parts = receivedData.split(" ");
                         if (parts.length >= 2) {
@@ -476,7 +462,7 @@ public class InteractiveMapView extends View implements RobotCommunicationInterf
                                 float d = Float.parseFloat(parts[1]);
                                 moveForward(d);
                             } catch (NumberFormatException e) {
-                                Log.e(TAG, "Invalid destination format: " + receivedData, e);
+                                Log.e(TAG, "Invalid distance format: " + receivedData, e);
                             }
                         }
                     } else if (receivedData.startsWith("A ")) {
@@ -493,8 +479,10 @@ public class InteractiveMapView extends View implements RobotCommunicationInterf
                         Log.w(TAG, "Unknown command received: " + receivedData);
                     }
 
+                    // Sau khi nhận được phản hồi và cập nhật trạng thái robot, gửi lệnh tiếp theo
                     if (!creatingMap) {
-                        post(() -> sendNextCommand());
+                        // Dùng post để đảm bảo việc vẽ lại hoàn tất trước khi gửi lệnh mới
+                        post(this::sendNextCommand);
                     }
                 });
             }
@@ -503,31 +491,96 @@ public class InteractiveMapView extends View implements RobotCommunicationInterf
         }
     }
 
+    // =================================================== //
+    // CÁC HÀM KHÁC (GIỮ NGUYÊN)
+    // =================================================== //
+    private void setupCommunicationService() {
+        try {
+            robotCommunication = ConnectionManager.getInstance().getCommunicationService();
+            if (robotCommunication != null) {
+                robotCommunication.setCommunicationListener(this);
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error setting up communication service", e);
+        }
+    }
+
+    public void updateRobot(float distance, float angleDeltaDegrees) {
+        mapData.robotAngle += angleDeltaDegrees;
+        mapData.robotAngle = (mapData.robotAngle + 360) % 360;
+
+        float angleRad = (float) Math.toRadians(mapData.robotAngle);
+        float dx = (float) (distance * Math.cos(angleRad));
+        float dy = (float) (distance * Math.sin(angleRad));
+        mapData.robot.x += dx;
+        mapData.robot.y += dy;
+        invalidate();
+    }
+
+    @Override
+    public boolean onTouchEvent(MotionEvent event) {
+        scaleDetector.onTouchEvent(event);
+        gestureDetector.onTouchEvent(event);
+        return true;
+    }
+
+    private void updateRobotAngle(float angle) {
+        if (mapData == null) return;
+        mapData.robotAngle = (angle + 360) % 360;
+        setMapData(mapData);
+    }
+
+    public void moveForward(float distance) {
+        if (mapData == null || mapData.robot == null) return;
+        float angleRad = (float) Math.toRadians(mapData.robotAngle);
+        PointF oldPos = new PointF(mapData.robot.x, mapData.robot.y);
+        float dx = (float) (distance * Math.cos(angleRad));
+        float dy = (float) (distance * Math.sin(angleRad));
+        mapData.robot.x += dx;
+        mapData.robot.y += dy;
+
+        if (creatingMap) {
+            routes.add(new Pair<>(oldPos, new PointF(mapData.robot.x, mapData.robot.y)));
+        }
+        setMapData(mapData);
+    }
+
+    public void resetView() {
+        dx = 0;
+        dy = 0;
+        scale = 1.0f;
+        routes.clear();
+        tapPoints.clear();
+        currentPath.clear();
+        invalidate();
+    }
+
+    private void sendRobotCommand(String command) {
+        try {
+            if (robotCommunication != null && robotCommunication.isConnected()) {
+                robotCommunication.sendRobotCommand(command);
+            } else {
+                Toast.makeText(getContext(), "Robot not connected", Toast.LENGTH_SHORT).show();
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error sending robot command: " + command, e);
+        }
+    }
+
     @Override
     public void onDataSent(String data) {
         Log.d(TAG, "Data sent: " + data);
-        // Có thể xử lý log hoặc cập nhật UI
     }
 
     @Override
     public void onConnectionLost() {
         Log.w(TAG, "Connection lost");
-
-        // Thông báo người dùng nếu cần
-        if (getContext() != null) {
-            Toast.makeText(getContext(), "Kết nối đến robot đã mất", Toast.LENGTH_SHORT).show();
-        }
-
-        // Có thể thực hiện thêm hành động như ẩn điều khiển
+        Toast.makeText(getContext(), "Connection to robot lost", Toast.LENGTH_SHORT).show();
     }
 
     @Override
     public void onCommunicationError(String error) {
         Log.e(TAG, "Communication error: " + error);
-
-        if (getContext() != null) {
-            Toast.makeText(getContext(), "Lỗi giao tiếp: " + error, Toast.LENGTH_SHORT).show();
-        }
+        Toast.makeText(getContext(), "Communication Error: " + error, Toast.LENGTH_SHORT).show();
     }
-
 }
