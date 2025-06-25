@@ -32,6 +32,7 @@ public class InteractiveMapView extends View implements RobotCommunicationInterf
     private static final String TAG = "InteractiveMapView";
     private final float DISTANCE_THRESHOLD = 20f; // Chấp nhận sai số vị trí để đến waypoint tiếp theo
     private final float ANGLE_THRESHOLD = 10f;    // Chấp nhận sai số góc để đi thẳng
+    private final float CLOCK = 0.2f;
 
     // === CÁC BIẾN MỚI CHO VIỆC TÌM ĐƯỜNG VÀ ĐIỀU HƯỚNG ===
     private List<PointF> currentPath = new ArrayList<>(); // Đường đi được tính toán đến điểm đích
@@ -385,7 +386,7 @@ public class InteractiveMapView extends View implements RobotCommunicationInterf
         // Kiểm tra điều kiện dừng
         if (currentPath.isEmpty() || currentPathIndex >= currentPath.size() || mapData == null || mapData.robot == null) {
             Log.d(TAG, "Navigation finished or aborted.");
-            sendRobotCommand("S"); // Gửi lệnh dừng
+            sendRobotCommand(Instruction.STOP); // Gửi lệnh dừng
             currentPath.clear();
             tapPoints.clear();
             invalidate();
@@ -406,7 +407,7 @@ public class InteractiveMapView extends View implements RobotCommunicationInterf
             currentPathIndex++; // Chuyển sang waypoint tiếp theo
             if (currentPathIndex >= currentPath.size()) {
                 Log.d(TAG, "Destination reached!");
-                sendRobotCommand("S"); // Dừng khi đến đích cuối cùng
+                sendRobotCommand(Instruction.STOP); // Dừng khi đến đích cuối cùng
                 currentPath.clear();
                 tapPoints.clear();
                 invalidate();
@@ -471,6 +472,16 @@ public class InteractiveMapView extends View implements RobotCommunicationInterf
                             try {
                                 float angle = Float.parseFloat(parts[1]);
                                 updateRobotAngle(angle);
+                            } catch (NumberFormatException e) {
+                                Log.e(TAG, "Invalid angle format: " + receivedData, e);
+                            }
+                        }
+                    } else if (receivedData.startsWith("V ")) {
+                        String[] parts = receivedData.split(" ");
+                        if (parts.length >= 2) {
+                            try {
+                                float speed = Float.parseFloat(parts[1]); // cm/s
+                                moveForward(speed * CLOCK);
                             } catch (NumberFormatException e) {
                                 Log.e(TAG, "Invalid angle format: " + receivedData, e);
                             }
@@ -558,7 +569,7 @@ public class InteractiveMapView extends View implements RobotCommunicationInterf
     private void sendRobotCommand(String command) {
         try {
             if (robotCommunication != null && robotCommunication.isConnected()) {
-                robotCommunication.sendRobotCommand(command);
+                robotCommunication.sendRobotCommand(command, true);
             } else {
                 Toast.makeText(getContext(), "Robot not connected", Toast.LENGTH_SHORT).show();
             }

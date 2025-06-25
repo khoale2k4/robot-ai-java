@@ -88,12 +88,12 @@ public class OverlayView extends View {
 
         // Phân tích và hiển thị lệnh điều khiển
         String command = analyzePersonPosition(results);
-        if (command.contains("XOAY TRÁI")) {
-            callBackCommand = "TL";
-        } else if (command.contains("TIẾN")) {
+        if (command.contains("TIẾN")) {
             callBackCommand = "FW";
         } else if (command.contains("DỪNG")) {
             callBackCommand = "ST";
+        } else if (command.contains("XOAY TRÁI")) {
+            callBackCommand = "TL";
         } else {
             callBackCommand = "TR";
         }

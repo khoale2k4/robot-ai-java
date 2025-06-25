@@ -10,8 +10,9 @@ public interface RobotCommunicationInterface {
     void disconnect();
     
     // Data sending methods  
-    void sendData(String data);
+    void sendData(String data, boolean isAuto);
     void sendRobotCommand(String command);
+    void sendRobotCommand(String command, boolean isAuto);
     
     // Robot control methods
     void moveForward();

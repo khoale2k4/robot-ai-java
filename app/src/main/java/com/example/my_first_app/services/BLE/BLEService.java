@@ -561,7 +561,7 @@ public class BLEService implements RobotCommunicationInterface {
             if (RX_CHARACTERISTIC_UUID.equals(characteristic.getUuid())) {
                 final String receivedData = new String(characteristic.getValue(), StandardCharsets.UTF_8);
                 // Log.d(TAG, "Nhận được dữ liệu: " + receivedData);
-                
+
                 mainHandler.post(() -> {
                     if (communicationListener != null) {
                         communicationListener.onDataReceived(receivedData);
@@ -587,7 +587,7 @@ public class BLEService implements RobotCommunicationInterface {
     }
 
     @Override
-    public void sendData(String data) {
+    public void sendData(String data, boolean isAuto) {
         if (bluetoothGatt == null || txCharacteristic == null || !isConnected) {
             Log.e(TAG, "Chưa kết nối với thiết bị - bluetoothGatt: " + (bluetoothGatt != null) +
                     ", txCharacteristic: " + (txCharacteristic != null) + ", isConnected: " + isConnected);
@@ -605,19 +605,22 @@ public class BLEService implements RobotCommunicationInterface {
             return;
         }
 
-        if(lastOrder.equals(data)) {
+        if (lastOrder.equals(data)) {
             // Log.w(TAG, "Lệnh trùng lặp: " + data);
             return; // Không gửi lệnh trùng lặp
         }
         lastOrder = data;
 
-        long now = System.currentTimeMillis();
-        if (now - lastCommandTimestamp < MIN_COMMAND_INTERVAL_MS && !data.contains("ST")) {
-            Log.w(TAG, "Huỷ lệnh vì gửi quá nhanh: " + data);
-            return; // Không gửi nếu chưa đủ khoảng cách thời gian
-        }
+        if (!isAuto) {
+            long now = System.currentTimeMillis();
+            if (now - lastCommandTimestamp < MIN_COMMAND_INTERVAL_MS &&
+                    !data.contains("ST")) {
+                Log.w(TAG, "Huỷ lệnh vì gửi quá nhanh: " + data);
+                return; // Không gửi nếu chưa đủ khoảng cách thời gian
+            }
 
-        lastCommandTimestamp = now;
+            lastCommandTimestamp = now;
+        }
 
         // Add to queue
         synchronized (commandQueue) {
@@ -770,7 +773,11 @@ public class BLEService implements RobotCommunicationInterface {
 
     @Override
     public void sendRobotCommand(String command) {
-        sendData(command);
+        sendRobotCommand(command, false);
+    }
+
+    public void sendRobotCommand(String command, boolean isAuto) {
+        sendData(command, isAuto);
     }
 
     @Override
