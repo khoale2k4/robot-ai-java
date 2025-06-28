@@ -62,6 +62,7 @@ Mục tiêu chính của dự án là phát triển một robot có khả năng 
 2.  Trong `Tùy chọn nhà phát triển`, bật `Gỡ lỗi USB`.
 3.  Kết nối điện thoại với máy tính qua cáp USB.
 4.  Mở dự án bằng Android Studio và nhấn `Run` để cài đặt và chạy ứng dụng trên thiết bị.
+4.1 Có thể mở dự án bằng Visual Studio Code và chạy lệnh """ ./gradlew installDebug """
 
 ---
 
