@@ -43,6 +43,12 @@ public class CameraAIFragment extends Fragment {
 
     private static final String TAG = "CameraAIFragment";
 
+    private static final int CAMERA_FACING_BACK = CameraSelector.LENS_FACING_BACK;
+    private static final int CAMERA_FACING_FRONT = CameraSelector.LENS_FACING_FRONT;
+
+    private int cameraFacing = CAMERA_FACING_BACK;
+    private FloatingActionButton toggleCameraButton;
+
     private RobotCommunicationInterface robotCommunication;
     private PreviewView previewView;
     private OverlayView overlayView;
@@ -86,6 +92,7 @@ public class CameraAIFragment extends Fragment {
             setupCommunicationService();
             sendRobotCommand("ST");
             setupScanButton(view);
+            setupToggleCameraButton();
 
             // Initialize camera executor early
             if (cameraExecutor == null || cameraExecutor.isShutdown()) {
@@ -126,6 +133,7 @@ public class CameraAIFragment extends Fragment {
             previewView = view.findViewById(R.id.previewView);
             overlayView = view.findViewById(R.id.overlayView);
             noRobotWarning = view.findViewById(R.id.noRobotWarning);
+            toggleCameraButton = view.findViewById(R.id.toggleCameraButton);
 
             if (previewView == null) {
                 Log.e(TAG, "previewView is null");
@@ -175,6 +183,16 @@ public class CameraAIFragment extends Fragment {
         }
     }
 
+    private void setupToggleCameraButton() {
+        toggleCameraButton.setOnClickListener(v -> {
+            // Toggle camera facing
+            cameraFacing = (cameraFacing == CAMERA_FACING_BACK) ? CAMERA_FACING_FRONT : CAMERA_FACING_BACK;
+            updateCameraToggleIcon();
+            restartCamera();
+        });
+        updateCameraToggleIcon();
+    }
+
     private void setupDetector() {
         if (isDetectorInitialized) {
             Log.d(TAG, "Detector already initialized, skipping setup");
@@ -216,7 +234,7 @@ public class CameraAIFragment extends Fragment {
 
             if (success) {
                 Toast.makeText(getContext(), "SUCCESS",
-                            Toast.LENGTH_LONG).show();
+                        Toast.LENGTH_LONG).show();
                 isDetectorInitialized = true;
                 Log.i(TAG, "Task Vision detector initialized successfully");
             } else {
@@ -420,7 +438,7 @@ public class CameraAIFragment extends Fragment {
         try {
             // Chọn camera sau
             CameraSelector cameraSelector = new CameraSelector.Builder()
-                    .requireLensFacing(CameraSelector.LENS_FACING_BACK)
+                    .requireLensFacing(cameraFacing)
                     .build();
 
             // Preview use case
@@ -613,13 +631,13 @@ public class CameraAIFragment extends Fragment {
 
     // @Override
     // public void onDestroy() {
-    //     Log.d(TAG, "onDestroy called");
-    //     super.onDestroy();
+    // Log.d(TAG, "onDestroy called");
+    // super.onDestroy();
 
-    //     // Clean up everything
-    //     cleanupCamera();
-    //     cleanupDetectors();
-    //     cleanupExecutor();
+    // // Clean up everything
+    // cleanupCamera();
+    // cleanupDetectors();
+    // cleanupExecutor();
     // }
 
     @Override
@@ -734,5 +752,17 @@ public class CameraAIFragment extends Fragment {
         } catch (Exception e) {
             Log.e(TAG, "Error shutting down cameraExecutor", e);
         }
+    }
+
+    private void updateCameraToggleIcon() {
+        toggleCameraButton.setImageResource(
+                cameraFacing == CAMERA_FACING_BACK ? R.drawable.ic_camera_front : // You need to add this drawable
+                        R.drawable.ic_camera_rear // You need to add this drawable
+        );
+    }
+
+    private void restartCamera() {
+        cleanupCamera();
+        startCamera();
     }
 }

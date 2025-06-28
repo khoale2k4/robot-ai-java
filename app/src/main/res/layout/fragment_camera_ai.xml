@@ -18,6 +18,17 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent" />
 
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
+        android:id="@+id/toggleCameraButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_margin="16dp"
+        android:src="@drawable/ic_camera_front"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:fabSize="mini"
+        app:tint="@android:color/white" />
+
     <!-- AI Detection Info -->
     <!-- <TextView
         android:id="@+id/aiInfoText"
@@ -32,7 +43,7 @@
         android:visibility="visible"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintStart_toStartOf="parent" /> -->
-        
+
     <!-- No Robot Warning -->
     <TextView
         android:id="@+id/noRobotWarning"
