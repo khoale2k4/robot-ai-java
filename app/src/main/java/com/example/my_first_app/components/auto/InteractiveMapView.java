@@ -2,6 +2,7 @@ package com.example.my_first_app;
 
 import android.content.Context;
 import android.graphics.Canvas;
+import android.graphics.RectF;
 import android.graphics.Color;
 import android.graphics.Matrix;
 import android.graphics.Paint;
@@ -31,8 +32,13 @@ import java.util.Set;
 public class InteractiveMapView extends View implements RobotCommunicationInterface.CommunicationListener {
     private static final String TAG = "InteractiveMapView";
     private final float DISTANCE_THRESHOLD = 20f; // Chấp nhận sai số vị trí để đến waypoint tiếp theo
-    private final float ANGLE_THRESHOLD = 10f;    // Chấp nhận sai số góc để đi thẳng
+    private final float ANGLE_THRESHOLD = 10f; // Chấp nhận sai số góc để đi thẳng
     private final float CLOCK = 0.2f;
+
+    private List<PointF> obstacles = new ArrayList<>();
+    private Paint obstaclePaint;
+    private final float OBSTACLE_RADIUS = 15f;
+    private final float DETOUR_SAFETY_MARGIN = 40f;
 
     // === CÁC BIẾN MỚI CHO VIỆC TÌM ĐƯỜNG VÀ ĐIỀU HƯỚNG ===
     private List<PointF> currentPath = new ArrayList<>(); // Đường đi được tính toán đến điểm đích
@@ -108,6 +114,10 @@ public class InteractiveMapView extends View implements RobotCommunicationInterf
         directionPaint.setStrokeWidth(4);
         directionPaint.setAntiAlias(true);
 
+        obstaclePaint = new Paint();
+        obstaclePaint.setColor(Color.argb(150, 255, 100, 100));
+        obstaclePaint.setStyle(Paint.Style.FILL);
+
         setupCommunicationService();
 
         scaleDetector = new ScaleGestureDetector(context, new ScaleGestureDetector.SimpleOnScaleGestureListener() {
@@ -137,7 +147,8 @@ public class InteractiveMapView extends View implements RobotCommunicationInterf
             @Override
             public boolean onSingleTapConfirmed(MotionEvent e) {
                 if (creatingMap) {
-                    Toast.makeText(getContext(), "Switch to Autonomous Mode to set a destination.", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(getContext(), "Switch to Autonomous Mode to set a destination.", Toast.LENGTH_SHORT)
+                            .show();
                     return false;
                 }
 
@@ -173,12 +184,13 @@ public class InteractiveMapView extends View implements RobotCommunicationInterf
         pointPaint.setStyle(Paint.Style.FILL);
         pointPaint.setAntiAlias(true);
     }
-    
+
     // Các hàm tiện ích distance và distanceFromPointToSegment giữ nguyên
     private float distanceFromPointToSegment(PointF p, PointF a, PointF b) {
         float dx = b.x - a.x;
         float dy = b.y - a.y;
-        if (dx == 0 && dy == 0) return distance(p, a);
+        if (dx == 0 && dy == 0)
+            return distance(p, a);
         float t = ((p.x - a.x) * dx + (p.y - a.y) * dy) / (dx * dx + dy * dy);
         t = Math.max(0, Math.min(1, t));
         float projX = a.x + t * dx;
@@ -192,11 +204,11 @@ public class InteractiveMapView extends View implements RobotCommunicationInterf
         return (float) Math.sqrt(dx * dx + dy * dy);
     }
 
-
     @Override
     protected void onDraw(Canvas canvas) {
         super.onDraw(canvas);
-        if (mapDrawable == null) return;
+        if (mapDrawable == null)
+            return;
 
         canvas.save();
         canvas.translate(dx, dy);
@@ -227,10 +239,14 @@ public class InteractiveMapView extends View implements RobotCommunicationInterf
                 canvas.drawLine(start.x, start.y, end.x, end.y, pathPaint);
             }
         }
-        
+
         // Vẽ điểm tap (điểm đích)
         for (PointF point : tapPoints) {
             canvas.drawCircle(point.x, point.y, 10 / scale, pointPaint);
+        }
+
+        for (PointF obstacle : obstacles) {
+            canvas.drawCircle(obstacle.x, obstacle.y, OBSTACLE_RADIUS / scale, obstaclePaint);
         }
 
         // Vẽ robot + hướng
@@ -243,20 +259,20 @@ public class InteractiveMapView extends View implements RobotCommunicationInterf
             float dyArrow = (float) (length * Math.sin(angleRad));
             canvas.drawLine(robot.x, robot.y, robot.x + dxArrow, robot.y + dyArrow, directionPaint);
         }
-        
+
         canvas.restore();
     }
 
-
-    //================================================================//
+    // ================================================================//
     // HÀM TÌM ĐƯỜNG MỚI (PATHFINDING)
-    //================================================================//
+    // ================================================================//
 
     /**
      * Tìm điểm trên mạng lưới routes gần nhất với một điểm cho trước.
      */
-    private PointF findClosestPointOnRoutes(PointF point) {
-        if (routes.isEmpty()) return null;
+    private PointF findClosestPointOnRoutes(PointF point, List<Pair<PointF, PointF>> availableRoutes) {
+        if (routes.isEmpty())
+            return null;
 
         PointF closestPoint = null;
         float minDistance = Float.MAX_VALUE;
@@ -264,7 +280,7 @@ public class InteractiveMapView extends View implements RobotCommunicationInterf
         for (Pair<PointF, PointF> segment : routes) {
             PointF start = segment.first;
             PointF end = segment.second;
-            
+
             float distToStart = distance(point, start);
             float distToEnd = distance(point, end);
 
@@ -280,22 +296,58 @@ public class InteractiveMapView extends View implements RobotCommunicationInterf
         return closestPoint;
     }
 
+    public void replanPath() {
+        if (tapPoints.isEmpty() || mapData == null || mapData.robot == null) {
+            Log.w(TAG, "Cannot replan: no destination or robot data.");
+            return;
+        }
+
+        PointF destination = tapPoints.get(0);
+        PointF robotPosition = mapData.robot;
+
+        Log.d(TAG, "Re-planning path from " + robotPosition + " to " + destination + " avoiding " + obstacles.size()
+                + " obstacles.");
+
+        // 1. Lấy danh sách các đường đi hợp lệ (không bị chặn)
+        List<Pair<PointF, PointF>> validRoutes = getValidRoutes();
+
+        // 2. Tìm đường đi mới trên các đường đi hợp lệ đó
+        List<PointF> newPath = findPathOnRoutes(robotPosition, destination, validRoutes);
+
+        if (newPath != null && !newPath.isEmpty()) {
+            currentPath = newPath;
+            currentPathIndex = 0; // Bắt đầu lại từ đầu đường đi mới
+            Log.d(TAG, "New path found with " + currentPath.size() + " waypoints. Resuming navigation.");
+            invalidate(); // Vẽ lại đường đi mới
+
+            // Gửi lệnh tiếp theo để tiếp tục di chuyển theo đường mới
+            post(this::sendNextCommand);
+        } else {
+            Log.e(TAG, "No alternative path found to the destination!");
+            Toast.makeText(getContext(), "Path blocked! Cannot find alternative route.", Toast.LENGTH_LONG).show();
+            currentPath.clear();
+            invalidate();
+        }
+    }
+
     /**
      * Thuật toán BFS để tìm đường đi trên đồ thị routes.
      */
-    private List<PointF> findPathOnRoutes(PointF startPos, PointF endPos) {
-        if (routes.isEmpty()) return null;
+    private List<PointF> findPathOnRoutes(PointF startPos, PointF endPos, List<Pair<PointF, PointF>> availableRoutes) {
+        if (routes.isEmpty())
+            return null;
 
         // 1. Tìm điểm bắt đầu và kết thúc trên đồ thị
-        PointF startNode = findClosestPointOnRoutes(startPos);
-        PointF endNode = findClosestPointOnRoutes(endPos);
+        PointF startNode = findClosestPointOnRoutes(startPos, availableRoutes);
+        PointF endNode = findClosestPointOnRoutes(endPos, availableRoutes);
 
-        if (startNode == null || endNode == null) return null;
+        if (startNode == null || endNode == null)
+            return null;
 
         // 2. Xây dựng đồ thị (adjacency list)
         Map<PointF, List<PointF>> adjMap = new HashMap<>();
         Set<PointF> nodes = new HashSet<>();
-        for (Pair<PointF, PointF> segment : routes) {
+        for (Pair<PointF, PointF> segment : availableRoutes) {
             nodes.add(segment.first);
             nodes.add(segment.second);
             adjMap.computeIfAbsent(segment.first, k -> new ArrayList<>()).add(segment.second);
@@ -305,7 +357,7 @@ public class InteractiveMapView extends View implements RobotCommunicationInterf
         // 3. Chạy BFS
         Queue<PointF> queue = new ArrayDeque<>();
         Map<PointF, PointF> cameFrom = new HashMap<>(); // Để truy vết đường đi
-        
+
         queue.add(startNode);
         cameFrom.put(startNode, null);
 
@@ -325,7 +377,7 @@ public class InteractiveMapView extends View implements RobotCommunicationInterf
                 }
             }
         }
-        
+
         // 4. Truy vết ngược để tạo đường đi
         if (current == null || !current.equals(endNode)) {
             return null; // Không tìm thấy đường đi
@@ -338,8 +390,9 @@ public class InteractiveMapView extends View implements RobotCommunicationInterf
             temp = cameFrom.get(temp);
         }
         Collections.reverse(path);
-        
-        // Nếu điểm đầu tiên của path không phải là vị trí robot, thêm vị trí robot vào đầu
+
+        // Nếu điểm đầu tiên của path không phải là vị trí robot, thêm vị trí robot vào
+        // đầu
         if (!path.isEmpty() && distance(path.get(0), startPos) > 1f) {
             path.add(0, startPos);
         }
@@ -347,9 +400,34 @@ public class InteractiveMapView extends View implements RobotCommunicationInterf
         return path;
     }
 
-    //================================================================//
+    private List<Pair<PointF, PointF>> getValidRoutes() {
+        if (obstacles.isEmpty()) {
+            return new ArrayList<>(routes); // Nếu không có vật cản, trả về tất cả các đường
+        }
+
+        List<Pair<PointF, PointF>> validRoutes = new ArrayList<>();
+        for (Pair<PointF, PointF> segment : routes) {
+            boolean isBlocked = false;
+            for (PointF obstacle : obstacles) {
+                // Kiểm tra xem khoảng cách từ vật cản đến đoạn đường có nhỏ hơn bán kính ảo
+                // không
+                if (distanceFromPointToSegment(obstacle, segment.first, segment.second) < OBSTACLE_RADIUS) {
+                    isBlocked = true;
+                    Log.d(TAG, "Route segment " + segment.first + " -> " + segment.second
+                            + " is blocked by obstacle at " + obstacle);
+                    break; // Đoạn đường này bị chặn, không cần kiểm tra các vật cản khác
+                }
+            }
+            if (!isBlocked) {
+                validRoutes.add(segment);
+            }
+        }
+        return validRoutes;
+    }
+
+    // ================================================================//
     // LOGIC ĐIỀU KHIỂN ROBOT ĐÃ ĐƯỢC CẬP NHẬT
-    //================================================================//
+    // ================================================================//
 
     /**
      * Bắt đầu chế độ tự hành. Tìm đường và khởi động chuỗi lệnh.
@@ -360,11 +438,18 @@ public class InteractiveMapView extends View implements RobotCommunicationInterf
             return;
         }
 
-        PointF destination = tapPoints.get(0); // Lấy điểm đích đã tap
+        // PointF destination = tapPoints.get(0); // Lấy điểm đích đã tap
+        // Log.d(TAG, "Finding path from " + mapData.robot + " to " + destination);
+
+        // // Tìm đường đi mới
+        // List<PointF> foundPath = findPathOnRoutes(mapData.robot, destination);
+
+        PointF destination = tapPoints.get(0);
         Log.d(TAG, "Finding path from " + mapData.robot + " to " + destination);
 
-        // Tìm đường đi mới
-        List<PointF> foundPath = findPathOnRoutes(mapData.robot, destination);
+        // Lấy danh sách đường đi hợp lệ (có thể có vật cản đã tồn tại từ trước)
+        List<Pair<PointF, PointF>> validRoutes = getValidRoutes();
+        List<PointF> foundPath = findPathOnRoutes(mapData.robot, destination, validRoutes);
 
         if (foundPath != null && !foundPath.isEmpty()) {
             currentPath = foundPath;
@@ -384,7 +469,8 @@ public class InteractiveMapView extends View implements RobotCommunicationInterf
      */
     private void sendNextCommand() {
         // Kiểm tra điều kiện dừng
-        if (currentPath.isEmpty() || currentPathIndex >= currentPath.size() || mapData == null || mapData.robot == null) {
+        if (currentPath.isEmpty() || currentPathIndex >= currentPath.size() || mapData == null
+                || mapData.robot == null) {
             Log.d(TAG, "Navigation finished or aborted.");
             sendRobotCommand(Instruction.STOP); // Gửi lệnh dừng
             currentPath.clear();
@@ -455,7 +541,8 @@ public class InteractiveMapView extends View implements RobotCommunicationInterf
             if (context instanceof android.app.Activity && !((android.app.Activity) context).isFinishing()) {
                 ((android.app.Activity) context).runOnUiThread(() -> {
                     final String receivedData = data.trim();
-                    // Giả sử robot gửi lại "D <distance>" sau khi di chuyển và "A <angle>" sau khi xoay
+                    // Giả sử robot gửi lại "D <distance>" sau khi di chuyển và "A <angle>" sau khi
+                    // xoay
                     if (receivedData.startsWith("D ")) {
                         String[] parts = receivedData.split(" ");
                         if (parts.length >= 2) {
@@ -486,6 +573,17 @@ public class InteractiveMapView extends View implements RobotCommunicationInterf
                                 Log.e(TAG, "Invalid angle format: " + receivedData, e);
                             }
                         }
+                    } else if (receivedData.startsWith("O ")) {
+                        String[] parts = receivedData.split(" ");
+                        if (parts.length >= 2) {
+                            try {
+                                float distance = Float.parseFloat(parts[1]);
+                                sendRobotCommand(Instruction.STOP);
+                                addObstacleInFront(distance);
+                            } catch (NumberFormatException e) {
+                                Log.e(TAG, "Invalid angle format: " + receivedData, e);
+                            }
+                        }
                     } else {
                         Log.w(TAG, "Unknown command received: " + receivedData);
                     }
@@ -497,7 +595,9 @@ public class InteractiveMapView extends View implements RobotCommunicationInterf
                     }
                 });
             }
-        } catch (Exception e) {
+        } catch (
+
+        Exception e) {
             Log.e(TAG, "Error in onDataReceived", e);
         }
     }
@@ -528,6 +628,116 @@ public class InteractiveMapView extends View implements RobotCommunicationInterf
         invalidate();
     }
 
+    public void addObstacleInFront(float distance) {
+        if (mapData == null || mapData.robot == null) {
+            return;
+        }
+
+        float angleRad = (float) Math.toRadians(mapData.robotAngle);
+        PointF oldPos = new PointF(mapData.robot.x, mapData.robot.y);
+        float dx = (float) (distance * Math.cos(angleRad));
+        float dy = (float) (distance * Math.sin(angleRad));
+        PointF newObstacle = new PointF(mapData.robot.x + dx, mapData.robot.y + dy);
+        obstacles.add(newObstacle);
+        Log.d(TAG, "Added obstacle at: " + newObstacle.toString());
+        invalidate();
+        handleObstacle(newObstacle);
+    }
+
+    // THAY ĐỔI: Sửa đổi hàm xử lý vật cản
+    private void handleObstacle(PointF obstaclePos) {
+        // Ưu tiên 1: Thử tạo một đường vòng cục bộ 2 điểm
+        boolean detourCreated = calculateAndInjectDetour(obstaclePos);
+
+        if (detourCreated) {
+            // Nếu tạo đường vòng thành công, khởi động lại chu trình điều khiển
+            // để robot bắt đầu đi theo lộ trình mới
+            Log.d(TAG, "Detour created successfully, resuming navigation.");
+            post(this::sendNextCommand);
+        } else {
+            // Nếu thất bại, thử tìm một con đường hoàn toàn khác
+            Log.w(TAG, "Could not create a local detour. Trying to find a completely new route...");
+            replanPath();
+        }
+    }
+
+    private boolean calculateAndInjectDetour(PointF obstaclePos) {
+        if (currentPath.isEmpty() || currentPathIndex >= currentPath.size() || mapData == null
+                || mapData.robot == null) {
+            Log.e(TAG, "Cannot create detour, no active path or robot data.");
+            return false;
+        }
+
+        // --- BƯỚC 1: XÁC ĐỊNH ĐOẠN ĐƯỜNG BỊ CHẶN ---
+        // Điểm bắt đầu luôn là vị trí hiện tại của robot để có kế hoạch chính xác nhất.
+        PointF startPoint = mapData.robot;
+        // Điểm kết thúc của đoạn đường bị chặn là waypoint tiếp theo trong kế hoạch.
+        PointF endPoint = currentPath.get(currentPathIndex);
+
+        // --- BƯỚC 2: TÍNH TOÁN CÁC VECTOR CHỈ HƯỚNG ---
+        float pathDx = endPoint.x - startPoint.x;
+        float pathDy = endPoint.y - startPoint.y;
+        float pathLength = (float) Math.sqrt(pathDx * pathDx + pathDy * pathDy);
+
+        // Nếu robot đã gần như đứng trên waypoint tiếp theo, việc tạo đường vòng không
+        // có ý nghĩa.
+        if (pathLength < 1.0f) {
+            Log.w(TAG, "Too close to the next waypoint to create a detour.");
+            return false;
+        }
+
+        // Vector chỉ hướng của đường đi (đã chuẩn hóa)
+        PointF pathDirection = new PointF(pathDx / pathLength, pathDy / pathLength);
+        // Vector pháp tuyến (vuông góc, đã chuẩn hóa)
+        PointF perpDirection = new PointF(-pathDirection.y, pathDirection.x);
+
+        // --- BƯỚC 3: TÍNH TOÁN 2 PHƯƠNG ÁN ĐƯỜNG VÒNG (TRÁI VÀ PHẢI) ---
+        float sideMargin = DETOUR_SAFETY_MARGIN;
+        float forwardMargin = OBSTACLE_RADIUS + 15f; // Đi về phía trước 1 khoảng an toàn
+
+        // Phương án 1 (ví dụ: né về phía vector pháp tuyến)
+        PointF p1_option1 = new PointF(obstaclePos.x + perpDirection.x * sideMargin,
+                obstaclePos.y + perpDirection.y * sideMargin);
+        PointF p2_option1 = new PointF(p1_option1.x + pathDirection.x * forwardMargin,
+                p1_option1.y + pathDirection.y * forwardMargin);
+        float cost1 = distance(startPoint, p1_option1) + distance(p1_option1, p2_option1)
+                + distance(p2_option1, endPoint);
+
+        // Phương án 2 (ví dụ: né về phía đối của vector pháp tuyến)
+        PointF p1_option2 = new PointF(obstaclePos.x - perpDirection.x * sideMargin,
+                obstaclePos.y - perpDirection.y * sideMargin);
+        PointF p2_option2 = new PointF(p1_option2.x + pathDirection.x * forwardMargin,
+                p1_option2.y + pathDirection.y * forwardMargin);
+        float cost2 = distance(startPoint, p1_option2) + distance(p1_option2, p2_option2)
+                + distance(p2_option2, endPoint);
+
+        // --- BƯỚC 4: CHỌN PHƯƠNG ÁN TỐT NHẤT VÀ CHÈN VÀO LỘ TRÌNH ---
+        PointF bestP1, bestP2;
+        if (cost1 <= cost2) {
+            bestP1 = p1_option1;
+            bestP2 = p2_option1;
+            Log.d(TAG, "Detour Option 1 chosen.");
+        } else {
+            bestP1 = p1_option2;
+            bestP2 = p2_option2;
+            Log.d(TAG, "Detour Option 2 chosen.");
+        }
+        // Chèn P2 vào vị trí của waypoint hiện tại. Các waypoint sau sẽ bị đẩy về phía
+        // sau.
+        currentPath.add(currentPathIndex, bestP2);
+        // Chèn P1 vào vị trí của P2 vừa chèn. P2 và các waypoint sau lại bị đẩy về phía
+        // sau.
+        currentPath.add(currentPathIndex, bestP1);
+
+        Log.d(TAG, "Path injected. New target is P1: " + bestP1);
+        Log.d(TAG, "Full remaining path: " + currentPath.subList(currentPathIndex, currentPath.size()));
+
+        // Vẽ lại để hiển thị đường đi mới
+        invalidate();
+
+        return true; // Báo hiệu đã tạo đường vòng thành công
+    }
+
     @Override
     public boolean onTouchEvent(MotionEvent event) {
         scaleDetector.onTouchEvent(event);
@@ -536,13 +746,15 @@ public class InteractiveMapView extends View implements RobotCommunicationInterf
     }
 
     private void updateRobotAngle(float angle) {
-        if (mapData == null) return;
+        if (mapData == null)
+            return;
         mapData.robotAngle = (angle + 360) % 360;
         setMapData(mapData);
     }
 
     public void moveForward(float distance) {
-        if (mapData == null || mapData.robot == null) return;
+        if (mapData == null || mapData.robot == null)
+            return;
         float angleRad = (float) Math.toRadians(mapData.robotAngle);
         PointF oldPos = new PointF(mapData.robot.x, mapData.robot.y);
         float dx = (float) (distance * Math.cos(angleRad));
@@ -563,6 +775,7 @@ public class InteractiveMapView extends View implements RobotCommunicationInterf
         routes.clear();
         tapPoints.clear();
         currentPath.clear();
+        obstacles.clear();
         invalidate();
     }
 
