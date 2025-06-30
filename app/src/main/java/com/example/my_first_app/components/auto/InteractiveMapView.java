@@ -14,6 +14,7 @@ import android.util.Pair;
 import android.view.GestureDetector;
 import android.view.MotionEvent;
 import android.view.ScaleGestureDetector;
+import android.graphics.DashPathEffect;
 import android.view.View;
 import android.widget.Toast;
 
@@ -39,6 +40,11 @@ public class InteractiveMapView extends View implements RobotCommunicationInterf
     private Paint obstaclePaint;
     private final float OBSTACLE_RADIUS = 15f;
     private final float DETOUR_SAFETY_MARGIN = 40f;
+
+    private final float DETOUR_DISTANCE = 60f; // Khoảng cách đi vòng
+    private final float OBSTACLE_DETECTION_RANGE = 30f; // Phạm vi phát hiện vật cản
+    private boolean isDetouring = false; // Trạng thái đang đi vòng
+    private List<PointF> detourPath = new ArrayList<>(); // Đường đi vòng tạm thời
 
     // === CÁC BIẾN MỚI CHO VIỆC TÌM ĐƯỜNG VÀ ĐIỀU HƯỚNG ===
     private List<PointF> currentPath = new ArrayList<>(); // Đường đi được tính toán đến điểm đích
@@ -249,6 +255,20 @@ public class InteractiveMapView extends View implements RobotCommunicationInterf
             canvas.drawCircle(obstacle.x, obstacle.y, OBSTACLE_RADIUS / scale, obstaclePaint);
         }
 
+        if (isDetouring && !detourPath.isEmpty()) {
+            Paint detourPaint = new Paint();
+            detourPaint.setColor(Color.MAGENTA); // Màu tím để phân biệt
+            detourPaint.setStrokeWidth(4);
+            detourPaint.setStyle(Paint.Style.STROKE);
+            detourPaint.setPathEffect(new DashPathEffect(new float[] { 10, 5 }, 0)); // Đường đứt nét
+
+            for (int i = 0; i < detourPath.size() - 1; i++) {
+                PointF start = detourPath.get(i);
+                PointF end = detourPath.get(i + 1);
+                canvas.drawLine(start.x, start.y, end.x, end.y, detourPaint);
+            }
+        }
+
         // Vẽ robot + hướng
         if (mapData != null && mapData.robot != null) {
             PointF robot = mapData.robot;
@@ -321,7 +341,7 @@ public class InteractiveMapView extends View implements RobotCommunicationInterf
             invalidate(); // Vẽ lại đường đi mới
 
             // Gửi lệnh tiếp theo để tiếp tục di chuyển theo đường mới
-            post(this::sendNextCommand);
+            post(this::sendNextCommandWithDetour);
         } else {
             Log.e(TAG, "No alternative path found to the destination!");
             Toast.makeText(getContext(), "Path blocked! Cannot find alternative route.", Toast.LENGTH_LONG).show();
@@ -425,6 +445,266 @@ public class InteractiveMapView extends View implements RobotCommunicationInterf
         return validRoutes;
     }
 
+    /**
+     * Tạo đường đi vòng qua vật cản khi không có đường thay thế
+     */
+    private List<PointF> createDetourPath(PointF robotPos, PointF target, PointF obstacle) {
+        List<PointF> detour = new ArrayList<>();
+
+        // Vector từ robot đến vật cản
+        float dx = obstacle.x - robotPos.x;
+        float dy = obstacle.y - robotPos.y;
+        float distance = (float) Math.sqrt(dx * dx + dy * dy);
+
+        if (distance == 0)
+            return null;
+
+        // Vector đơn vị vuông góc (để đi vòng)
+        float perpX = -dy / distance; // Xoay 90 độ
+        float perpY = dx / distance;
+
+        // Tạo 2 điểm đi vòng (trái và phải vật cản)
+        PointF leftDetour = new PointF(
+                obstacle.x + perpX * DETOUR_DISTANCE,
+                obstacle.y + perpY * DETOUR_DISTANCE);
+
+        PointF rightDetour = new PointF(
+                obstacle.x - perpX * DETOUR_DISTANCE,
+                obstacle.y - perpY * DETOUR_DISTANCE);
+
+        // Chọn hướng đi vòng gần với đích nhất
+        float leftDist = distance(leftDetour, target);
+        float rightDist = distance(rightDetour, target);
+
+        PointF chosenDetour = (leftDist < rightDist) ? leftDetour : rightDetour;
+
+        // Tạo đường đi vòng: robot → điểm vòng → tiếp tục đến đích
+        detour.add(robotPos);
+        detour.add(chosenDetour);
+
+        // Tìm điểm tiếp theo trên đường chính sau khi vòng qua vật cản
+        PointF nextPoint = findNextPointAfterDetour(chosenDetour, target);
+        if (nextPoint != null) {
+            detour.add(nextPoint);
+        }
+
+        return detour;
+    }
+
+    /**
+     * Tìm điểm tiếp theo trên đường chính sau khi đi vòng
+     */
+    private PointF findNextPointAfterDetour(PointF detourPoint, PointF finalTarget) {
+        // Tìm điểm trên routes gần nhất với detourPoint và không bị chặn
+        PointF bestPoint = null;
+        float minDistance = Float.MAX_VALUE;
+
+        for (Pair<PointF, PointF> segment : routes) {
+            // Kiểm tra cả 2 điểm đầu cuối của segment
+            PointF[] points = { segment.first, segment.second };
+
+            for (PointF point : points) {
+                float dist = distance(detourPoint, point);
+
+                // Kiểm tra xem đường từ detourPoint đến point có bị chặn không
+                if (dist < minDistance && !isPathBlocked(detourPoint, point)) {
+                    // Ưu tiên điểm gần với đích cuối
+                    float distToTarget = distance(point, finalTarget);
+                    if (distToTarget < distance(bestPoint != null ? bestPoint : point, finalTarget) * 1.5f) {
+                        minDistance = dist;
+                        bestPoint = point;
+                    }
+                }
+            }
+        }
+
+        return bestPoint;
+    }
+
+    /**
+     * Kiểm tra xem đường đi từ A đến B có bị vật cản chặn không
+     */
+    private boolean isPathBlocked(PointF start, PointF end) {
+        for (PointF obstacle : obstacles) {
+            float distToPath = distanceFromPointToSegment(obstacle, start, end);
+            if (distToPath < OBSTACLE_RADIUS + 10f) { // Thêm margin an toàn
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Cập nhật lại hàm replanPath để hỗ trợ đi vòng
+     */
+    public void replanPathWithDetour() {
+        if (tapPoints.isEmpty() || mapData == null || mapData.robot == null) {
+            Log.w(TAG, "Cannot replan: no destination or robot data.");
+            return;
+        }
+
+        PointF destination = tapPoints.get(0);
+        PointF robotPosition = mapData.robot;
+
+        Log.d(TAG, "Re-planning path from " + robotPosition + " to " + destination +
+                " avoiding " + obstacles.size() + " obstacles.");
+
+        // 1. Thử tìm đường thay thế trên routes có sẵn
+        List<Pair<PointF, PointF>> validRoutes = getValidRoutes();
+        List<PointF> newPath = findPathOnRoutes(robotPosition, destination, validRoutes);
+
+        if (newPath != null && !newPath.isEmpty()) {
+            // Tìm được đường thay thế trên routes
+            currentPath = newPath;
+            currentPathIndex = 0;
+            isDetouring = false;
+            detourPath.clear();
+            Log.d(TAG, "Alternative route found. Resuming normal navigation.");
+
+        } else {
+            // Không tìm được đường thay thế → Tạo đường đi vòng
+            Log.d(TAG, "No alternative route found. Creating detour path.");
+
+            // Tìm vật cản gần nhất cản đường
+            PointF nearestObstacle = findNearestObstacleOnPath(robotPosition, destination);
+
+            if (nearestObstacle != null) {
+                List<PointF> detour = createDetourPath(robotPosition, destination, nearestObstacle);
+
+                if (detour != null && !detour.isEmpty()) {
+                    currentPath = detour;
+                    currentPathIndex = 0;
+                    isDetouring = true;
+                    detourPath = new ArrayList<>(detour);
+                    Log.d(TAG, "Detour path created with " + detour.size() + " waypoints.");
+                } else {
+                    Log.e(TAG, "Cannot create detour path!");
+                    Toast.makeText(getContext(), "Path completely blocked!", Toast.LENGTH_LONG).show();
+                    currentPath.clear();
+                    return;
+                }
+            } else {
+                Log.e(TAG, "No obstacle found to detour around!");
+                currentPath.clear();
+                return;
+            }
+        }
+
+        invalidate();
+        post(this::sendNextCommandWithDetour);
+    }
+
+    /**
+     * Tìm vật cản gần nhất trên đường đi hiện tại
+     */
+    private PointF findNearestObstacleOnPath(PointF start, PointF end) {
+        PointF nearestObstacle = null;
+        float minDistance = Float.MAX_VALUE;
+
+        for (PointF obstacle : obstacles) {
+            float distToPath = distanceFromPointToSegment(obstacle, start, end);
+            float distFromStart = distance(start, obstacle);
+
+            // Chỉ xét vật cản nằm trên đường đi và gần điểm bắt đầu
+            if (distToPath < OBSTACLE_RADIUS + 10f && distFromStart < minDistance) {
+                minDistance = distFromStart;
+                nearestObstacle = obstacle;
+            }
+        }
+
+        return nearestObstacle;
+    }
+
+    /**
+     * Cập nhật hàm sendNextCommand để xử lý việc đi vòng
+     */
+    private void sendNextCommandWithDetour() {
+        // Kiểm tra điều kiện dừng
+        if (currentPath.isEmpty() || currentPathIndex >= currentPath.size() ||
+                mapData == null || mapData.robot == null) {
+            Log.d(TAG, "Navigation finished or aborted.");
+            sendRobotCommand(Instruction.STOP);
+            currentPath.clear();
+            tapPoints.clear();
+            isDetouring = false;
+            detourPath.clear();
+            invalidate();
+            return;
+        }
+
+        PointF target = currentPath.get(currentPathIndex);
+        PointF robot = mapData.robot;
+        float currentAngle = mapData.robotAngle;
+
+        float dx = target.x - robot.x;
+        float dy = target.y - robot.y;
+        float distance = (float) Math.sqrt(dx * dx + dy * dy);
+
+        // 1. Kiểm tra xem đã đến waypoint chưa
+        if (distance < DISTANCE_THRESHOLD) {
+            Log.d(TAG, "Reached waypoint " + currentPathIndex + ": " + target);
+            currentPathIndex++;
+
+            // Kiểm tra xem đã hoàn thành đường đi vòng chưa
+            if (isDetouring && currentPathIndex >= currentPath.size()) {
+                Log.d(TAG, "Detour completed. Returning to main route.");
+
+                // Tìm đường từ vị trí hiện tại về đích chính
+                PointF finalDestination = tapPoints.get(0);
+                List<PointF> returnPath = findPathOnRoutes(robot, finalDestination, getValidRoutes());
+
+                if (returnPath != null && !returnPath.isEmpty()) {
+                    currentPath = returnPath;
+                    currentPathIndex = 0;
+                    isDetouring = false;
+                    detourPath.clear();
+                    Log.d(TAG, "Returning to main route with " + returnPath.size() + " waypoints.");
+                } else {
+                    Log.d(TAG, "Reached final destination via detour.");
+                    sendRobotCommand(Instruction.STOP);
+                    currentPath.clear();
+                    tapPoints.clear();
+                    isDetouring = false;
+                    detourPath.clear();
+                    invalidate();
+                    return;
+                }
+            }
+
+            if (currentPathIndex >= currentPath.size()) {
+                Log.d(TAG, "Destination reached!");
+                sendRobotCommand(Instruction.STOP);
+                currentPath.clear();
+                tapPoints.clear();
+                isDetouring = false;
+                detourPath.clear();
+                invalidate();
+                return;
+            }
+
+            // Gọi lại để xử lý waypoint tiếp theo
+            sendNextCommandWithDetour();
+            return;
+        }
+
+        // 2. Tính toán góc và gửi lệnh (giống như cũ)
+        float desiredAngle = (float) Math.toDegrees(Math.atan2(dy, dx));
+        float angleDiff = normalizeAngle(desiredAngle - currentAngle);
+
+        if (Math.abs(angleDiff) > ANGLE_THRESHOLD) {
+            if (angleDiff > 0) {
+                Log.d(TAG, "Turning RIGHT" + (isDetouring ? " (detouring)" : "") + ". Diff: " + angleDiff);
+                sendRobotCommand(Instruction.TURN_RIGHT);
+            } else {
+                Log.d(TAG, "Turning LEFT" + (isDetouring ? " (detouring)" : "") + ". Diff: " + angleDiff);
+                sendRobotCommand(Instruction.TURN_LEFT);
+            }
+        } else {
+            Log.d(TAG, "Moving FORWARD" + (isDetouring ? " (detouring)" : "") + ". Distance: " + distance);
+            sendRobotCommand(Instruction.FORWARD);
+        }
+    }
+
     // ================================================================//
     // LOGIC ĐIỀU KHIỂN ROBOT ĐÃ ĐƯỢC CẬP NHẬT
     // ================================================================//
@@ -455,7 +735,7 @@ public class InteractiveMapView extends View implements RobotCommunicationInterf
             currentPath = foundPath;
             currentPathIndex = 0; // Bắt đầu từ waypoint đầu tiên
             Log.d(TAG, "Path found with " + currentPath.size() + " waypoints. Starting navigation.");
-            sendNextCommand(); // Gửi lệnh đầu tiên
+            sendNextCommandWithDetour(); // Gửi lệnh đầu tiên
         } else {
             Log.e(TAG, "No path found to the destination.");
             Toast.makeText(getContext(), "No path found!", Toast.LENGTH_SHORT).show();
@@ -580,6 +860,7 @@ public class InteractiveMapView extends View implements RobotCommunicationInterf
                                 float distance = Float.parseFloat(parts[1]);
                                 sendRobotCommand(Instruction.STOP);
                                 addObstacleInFront(distance);
+                                post(() -> replanPathWithDetour());
                             } catch (NumberFormatException e) {
                                 Log.e(TAG, "Invalid angle format: " + receivedData, e);
                             }
@@ -591,7 +872,7 @@ public class InteractiveMapView extends View implements RobotCommunicationInterf
                     // Sau khi nhận được phản hồi và cập nhật trạng thái robot, gửi lệnh tiếp theo
                     if (!creatingMap) {
                         // Dùng post để đảm bảo việc vẽ lại hoàn tất trước khi gửi lệnh mới
-                        post(this::sendNextCommand);
+                        post(this::sendNextCommandWithDetour);
                     }
                 });
             }
