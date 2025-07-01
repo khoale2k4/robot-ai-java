@@ -38,7 +38,7 @@ public class InteractiveMapView extends View implements RobotCommunicationInterf
 
     private List<PointF> obstacles = new ArrayList<>();
     private Paint obstaclePaint;
-    private final float OBSTACLE_RADIUS = 15f;
+    private final float OBSTACLE_RADIUS = 45f;
     private final float DETOUR_SAFETY_MARGIN = 40f;
 
     private final float DETOUR_DISTANCE = 60f; // Khoảng cách đi vòng
@@ -623,7 +623,7 @@ public class InteractiveMapView extends View implements RobotCommunicationInterf
         if (currentPath.isEmpty() || currentPathIndex >= currentPath.size() ||
                 mapData == null || mapData.robot == null) {
             Log.d(TAG, "Navigation finished or aborted.");
-            sendRobotCommand(Instruction.STOP);
+            // sendRobotCommand(Instruction.STOP);
             currentPath.clear();
             tapPoints.clear();
             isDetouring = false;
@@ -752,7 +752,7 @@ public class InteractiveMapView extends View implements RobotCommunicationInterf
         if (currentPath.isEmpty() || currentPathIndex >= currentPath.size() || mapData == null
                 || mapData.robot == null) {
             Log.d(TAG, "Navigation finished or aborted.");
-            sendRobotCommand(Instruction.STOP); // Gửi lệnh dừng
+            // sendRobotCommand(Instruction.STOP); // Gửi lệnh dừng
             currentPath.clear();
             tapPoints.clear();
             invalidate();
@@ -854,11 +854,14 @@ public class InteractiveMapView extends View implements RobotCommunicationInterf
                             }
                         }
                     } else if (receivedData.startsWith("O ")) {
+                        if(creatingMap) {
+                            return;
+                        }
                         String[] parts = receivedData.split(" ");
                         if (parts.length >= 2) {
                             try {
-                                float distance = Float.parseFloat(parts[1]);
-                                sendRobotCommand(Instruction.STOP);
+                                float distance = Float.parseFloat(parts[1]) * 3;
+                                // sendRobotCommand(Instruction.STOP);
                                 addObstacleInFront(distance);
                                 post(() -> replanPathWithDetour());
                             } catch (NumberFormatException e) {
